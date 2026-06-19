@@ -1,13 +1,10 @@
 package com.anish.owee.ui.screen.friend.components
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -17,21 +14,10 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import com.anish.owee.ui.theme.OweeTheme
 import com.anish.owee.ui.theme.SurfaceVariant
 import com.anish.owee.ui.theme.TextSecondary
 
-/**
- * Search field for finding users by username. Same two hooks as before —
- * [value]/[onValueChange] update the ViewModel's searchQuery, [onSearch]
- * triggers the existing searchUsers() call — fired either by the trailing
- * icon or the keyboard's search action, so no separate "Search" button
- * is needed taking up vertical space.
- */
 @Composable
 fun FriendSearchBar(
     value: String,
@@ -59,10 +45,10 @@ fun FriendSearchBar(
         },
         trailingIcon = {
             if (value.isNotBlank()) {
-                IconButton(onClick = onSearch) {
+                IconButton(onClick = { onValueChange("") }) {
                     Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = "Search",
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Clear search",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -82,18 +68,4 @@ fun FriendSearchBar(
             disabledIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
         )
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun FriendSearchBarPreview() {
-    OweeTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            FriendSearchBar(
-                value = "",
-                onValueChange = {},
-                onSearch = {}
-            )
-        }
-    }
 }

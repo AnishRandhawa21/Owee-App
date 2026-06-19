@@ -1,5 +1,6 @@
 package com.anish.owee.data.repository
 
+import android.util.Log
 import com.anish.owee.data.model.Friendship
 import com.anish.owee.data.model.SearchUser
 import com.anish.owee.data.remote.SupabaseProvider
@@ -38,6 +39,55 @@ class FriendshipRepositoryImpl : FriendshipRepository {
                 )
 
         try {
+            // 1. Check if a friendship row already exists
+            val existingFriendship = postgrest["friendships"]
+                .select {
+                    filter {
+                        or {
+                            and {
+                                eq("sender_id", currentUserId)
+                                eq("receiver_id", receiverId)
+                            }
+                            and {
+                                eq("sender_id", receiverId)
+                                eq("receiver_id", currentUserId)
+                            }
+                        }
+                    }
+                }
+                .decodeSingleOrNull<Friendship>()
+            android.util.Log.d(
+                "OWEE_FRIEND",
+                "Existing friendship = $existingFriendship"
+            )
+
+            if (existingFriendship != null) {
+                when (existingFriendship.status) {
+                    "pending" -> return@withContext Result.failure(Exception("Friend request already sent"))
+                    "accepted" -> return@withContext Result.failure(Exception("Already friends"))
+                    "rejected" -> {
+                        Log.d("OWEE_FRIEND", "Entering rejected branch")
+                        // 2. Update status back to 'pending' if it was rejected
+                        Log.d("OWEE_FRIEND", "Updating friendship ${existingFriendship.id}")
+                        postgrest["friendships"].update(
+                            {
+                                set("status", "pending")
+                                set("sender_id", currentUserId) // In case the original direction was different
+                                set("receiver_id", receiverId)
+                                Log.d("OWEE_FRIEND", "Update completed")
+                            }
+                        )
+                        {
+                            filter {
+                                eq("id", existingFriendship.id)
+                            }
+                        }
+                        return@withContext Result.success(Unit)
+                    }
+                }
+            }
+
+            // 3. No row exists, insert new one
             postgrest["friendships"].insert(
                 mapOf(
                     "sender_id" to currentUserId,
@@ -47,7 +97,13 @@ class FriendshipRepositoryImpl : FriendshipRepository {
             )
 
             Result.success(Unit)
-        } catch (e: Exception) {
+        }catch (e: Exception) {
+            android.util.Log.e(
+                "OWEE_FRIEND",
+                "sendFriendRequest failed",
+                e
+            )
+
             Result.failure(e)
         }
     }

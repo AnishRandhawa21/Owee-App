@@ -3,6 +3,8 @@ package com.anish.owee.ui.screen.friend
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -113,6 +115,7 @@ private fun FriendDetailContent(
 
     Column(
         modifier = modifier
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(top = 12.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

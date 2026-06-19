@@ -10,5 +10,9 @@ data class FriendRequestUiState(
 
     val balance: Double = 0.0,
 
+    val requestedByMe: Double = 0.0,
+
+    val requestedByFriend: Double = 0.0,
+
     val error: String? = null
 )

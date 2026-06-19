@@ -44,8 +44,12 @@ import com.anish.owee.ui.theme.TextSecondary
 import com.anish.owee.viewmodel.FriendRequestViewModel
 import com.anish.owee.viewmodel.FriendshipViewModel
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.anish.owee.data.model.FriendRequest
 import com.anish.owee.ui.screen.friend.components.FriendRequestActivityCard
+import com.anish.owee.ui.screen.friend.components.SettlementBottomSheet
 import com.anish.owee.viewmodel.state.toBalanceState
 
 @Composable
@@ -72,6 +76,10 @@ fun FriendDetailScreen(
                 else -> null
             }
         }
+
+    var showSettlementSheet by remember {
+        mutableStateOf(false)
+    }
     LaunchedEffect(friendId) {
         friendRequestViewModel.loadRequests(friendId)
         android.util.Log.d(
@@ -115,11 +123,25 @@ fun FriendDetailScreen(
                     onBackClick = onBackClick,
                     requests = requestUiState.requests,
                     currentUserId = uiState.currentUserId,
+                    onSettleUpClick = {
+                        showSettlementSheet = true},
                     onRequestMoneyClick = {
                         onRequestMoneyClick(friend.id, friend.displayName)
                     },
                     modifier = Modifier.fillMaxSize()
                 )
+
+                if (showSettlementSheet) {
+                    SettlementBottomSheet(
+                        balance = requestUiState.balance,
+                        requestedByMe = requestUiState.requestedByMe,
+                        requestedByFriend = requestUiState.requestedByFriend,
+                        friendName = friend.displayName,
+                        onDismiss = {
+                            showSettlementSheet = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -134,6 +156,7 @@ private fun FriendDetailContent(
     currentUserId: String?,
     onBackClick: () -> Unit,
     onRequestMoneyClick: () -> Unit,
+    onSettleUpClick: () -> Unit,
     modifier: Modifier = Modifier
 ){
     val firstName = friend.displayName.trim().split(" ").firstOrNull() ?: friend.displayName
@@ -249,14 +272,14 @@ private fun FriendDetailContent(
             }
 
             OutlinedButton(
-                onClick = { /* hook for future Add Expense flow */ },
+                onClick =  onSettleUpClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = MaterialTheme.shapes.medium
             ) {
                 Text(
-                    text = "Add Expense",
+                    text = "Settle Up",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -318,6 +341,7 @@ private fun FriendDetailContent(
         }
     }
 }
+
 
 @Composable
 private fun RecentActivityEmptyState() {

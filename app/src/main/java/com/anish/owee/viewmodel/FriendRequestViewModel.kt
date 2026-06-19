@@ -42,6 +42,16 @@ class FriendRequestViewModel : ViewModel() {
                 val currentUserId =
                     repository.getCurrentUserId()
 
+                val requestedByMe =
+                    requests
+                        .filter { it.creatorId == currentUserId }
+                        .sumOf { it.amount }
+
+                val requestedByFriend =
+                    requests
+                        .filter { it.creatorId != currentUserId }
+                        .sumOf { it.amount }
+
                 val balance = requests
                     .filter { it.status == "pending" }
                     .sumOf { request ->
@@ -57,7 +67,9 @@ class FriendRequestViewModel : ViewModel() {
                     _uiState.value.copy(
                         isLoading = false,
                         requests = requests,
-                        balance = balance
+                        balance = balance,
+                        requestedByMe = requestedByMe,
+                        requestedByFriend = requestedByFriend
                     )
                 android.util.Log.d(
                     "OWEE_REQUESTS",

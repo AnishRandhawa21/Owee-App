@@ -1,6 +1,9 @@
 package com.anish.owee.ui.screen.friend
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,10 +15,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,6 +34,23 @@ fun CreateFriendRequestScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val hasAmount = uiState.amount.isNotBlank() && uiState.amount != "0"
+
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            onBack()
+        }
+    }
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "buttonScale"
+    )
 
     Column(
         modifier = Modifier
@@ -57,6 +77,17 @@ fun CreateFriendRequestScreen(
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimary
             )
+        }
+
+        // --- Smooth Loading Indicator ---
+        Box(modifier = Modifier.fillMaxWidth().height(3.dp)) {
+            if (uiState.isLoading) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Primary,
+                    trackColor = Color.Transparent
+                )
+            }
         }
 
         Column(
@@ -167,26 +198,40 @@ fun CreateFriendRequestScreen(
         }
 
         // --- Action Button ---
-        Button(
-            onClick = { viewModel.createRequest(friendId) },
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp)
-                .height(56.dp),
-            shape = MaterialTheme.shapes.extraLarge,
-            enabled = hasAmount,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Primary,
-                contentColor = OnPrimary,
-                disabledContainerColor = PrimaryContainer.copy(alpha = 0.5f),
-                disabledContentColor = TextSecondary.copy(alpha = 0.5f)
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                .height(56.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
         ) {
-            Text(
-                text = if (hasAmount) "Send Request" else "Enter Amount",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
+            Button(
+                onClick = { viewModel.createRequest(friendId) },
+                modifier = Modifier.fillMaxSize(),
+                shape = MaterialTheme.shapes.extraLarge,
+                enabled = hasAmount && !uiState.isLoading,
+                interactionSource = interactionSource,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Primary,
+                    contentColor = OnPrimary,
+                    disabledContainerColor = Primary.copy(alpha = 0.6f),
+                    disabledContentColor = OnPrimary.copy(alpha = 0.8f)
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    hoveredElevation = 0.dp,
+                    focusedElevation = 0.dp
+                )
+            ) {
+                Text(
+                    text = if (uiState.isLoading) "Sending..." else if (hasAmount) "Send Request" else "Enter Amount",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
         }
     }
 }

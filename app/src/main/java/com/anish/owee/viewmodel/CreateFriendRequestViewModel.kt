@@ -42,14 +42,25 @@ class CreateFriendRequestViewModel : ViewModel() {
 
         if (amount == null) return
 
+        _uiState.value = _uiState.value.copy(isLoading = true)
+
         viewModelScope.launch {
-
-            val result = repository.createRequest(
-                friendId = friendId,
-                amount = amount,
-                note = uiState.value.note.ifBlank { null }
-            )
-
+            try {
+                repository.createRequest(
+                    friendId = friendId,
+                    amount = amount,
+                    note = uiState.value.note.ifBlank { null }
+                )
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isSuccess = true
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Something went wrong"
+                )
+            }
         }
     }
 

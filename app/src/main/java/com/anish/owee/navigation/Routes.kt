@@ -12,6 +12,7 @@ sealed class Route(val route: String) {
     // Bottom Navigation
     data object Home : Route("home")
     data object Friends : Route("friends")
+    data object FriendDetail : Route("friend_detail")
     data object Groups : Route("groups")
     data object Profile : Route("profile")
 }

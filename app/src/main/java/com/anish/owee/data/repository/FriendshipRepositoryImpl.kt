@@ -13,12 +13,11 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class FriendshipRepositoryImpl : FriendshipRepository {
 
@@ -193,58 +192,29 @@ class FriendshipRepositoryImpl : FriendshipRepository {
     }
 
     override fun friendshipChanges(): Flow<Unit> = flow {
-        android.util.Log.d("OWEE_REALTIME", "friendshipChanges() flow start")
-        
-        val channel = client.realtime.channel("friendship_changes")
+        val channelId = "friendship_changes_${UUID.randomUUID()}"
+        val channel = client.realtime.channel(channelId)
 
-        coroutineScope {
-            // Observe Channel Status
-            launch {
-                channel.status.collect { status ->
-                    android.util.Log.d("OWEE_REALTIME", "CHANNEL_STATUS: $status")
-                }
+        try {
+            val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "friendships"
             }
 
-            // Observe Realtime Socket Status
-            launch {
-                client.realtime.status.collect { status ->
-                    android.util.Log.d("OWEE_REALTIME", "REALTIME_STATUS: $status")
-                }
+            client.realtime.connect()
+            client.realtime.status.first { it == Realtime.Status.CONNECTED }
+
+            channel.subscribe()
+            channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
+
+            postgresFlow.collect {
+                emit(Unit)
             }
-
-            try {
-                // Initialize postgres flow listener
-                val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
-                    table = "friendships"
-                }
-
-                android.util.Log.d("OWEE_REALTIME", "Connecting to Realtime socket...")
-                client.realtime.connect()
-
-                // Wait for the socket to reach CONNECTED status before subscribing
-                android.util.Log.d("OWEE_REALTIME", "Waiting for REALTIME_STATUS to be CONNECTED...")
-                client.realtime.status.first { it == Realtime.Status.CONNECTED }
-                android.util.Log.d("OWEE_REALTIME", "REALTIME_STATUS is CONNECTED")
-
-                android.util.Log.d("OWEE_REALTIME", "Subscribing to channel: friendship_changes")
-                channel.subscribe()
-                
-                // Wait for the channel to reach SUBSCRIBED status
-                android.util.Log.d("OWEE_REALTIME", "Waiting for CHANNEL_STATUS to be SUBSCRIBED...")
-                channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
-                android.util.Log.d("OWEE_REALTIME", "CHANNEL_STATUS is SUBSCRIBED")
-                
-                android.util.Log.d("OWEE_REALTIME", "Waiting for postgres events...")
-                postgresFlow.collect { action ->
-                    android.util.Log.d("OWEE_REALTIME", "Database event received: $action")
-                    emit(Unit)
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("OWEE_REALTIME", "Realtime flow error: ${e.message}", e)
-                // In case of error, we can either re-throw or just end the flow.
-                // Re-throwing allows the ViewModel to catch it.
-                throw e
-            }
+        } catch (e: Exception) {
+            android.util.Log.e("FriendshipRepo", "Error in friendshipChanges", e)
+            throw e
+        } finally {
+            channel.unsubscribe()
+            client.realtime.removeChannel(channel)
         }
     }
 }

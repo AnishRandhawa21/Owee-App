@@ -31,29 +31,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anish.owee.data.model.User
-import com.anish.owee.ui.screen.friend.components.BalanceState
+import com.anish.owee.viewmodel.state.BalanceState
 import com.anish.owee.ui.screen.friend.components.FriendAvatar
-import com.anish.owee.ui.screen.friend.components.color
-import com.anish.owee.ui.screen.friend.components.rememberMockBalance
-import com.anish.owee.ui.screen.friend.components.sentenceLabel
-import com.anish.owee.ui.theme.OweeTheme
+import com.anish.owee.viewmodel.state.color
+import com.anish.owee.viewmodel.state.sentenceLabel
 import com.anish.owee.ui.theme.Surface
 import com.anish.owee.ui.theme.SurfaceVariant
 import com.anish.owee.ui.theme.TextSecondary
+import com.anish.owee.viewmodel.FriendRequestViewModel
 import com.anish.owee.viewmodel.FriendshipViewModel
+import androidx.compose.runtime.LaunchedEffect
+import com.anish.owee.data.model.FriendRequest
+import com.anish.owee.ui.screen.friend.components.FriendRequestActivityCard
+import com.anish.owee.viewmodel.state.toBalanceState
 
 @Composable
 fun FriendDetailScreen(
     friendId: String,
     onBackClick: () -> Unit = {},
-    friendshipViewModel: FriendshipViewModel = viewModel()
+    onRequestMoneyClick: (String) -> Unit,
+    friendshipViewModel: FriendshipViewModel = viewModel(),
+    friendRequestViewModel: FriendRequestViewModel = viewModel()
 ) {
 
     val uiState by friendshipViewModel
+        .uiState
+        .collectAsState()
+    val requestUiState by friendRequestViewModel
         .uiState
         .collectAsState()
 
@@ -65,6 +72,13 @@ fun FriendDetailScreen(
                 else -> null
             }
         }
+    LaunchedEffect(friendId) {
+        friendRequestViewModel.loadRequests(friendId)
+        android.util.Log.d(
+            "OWEE_REQUESTS",
+            "Loaded requests = ${requestUiState.requests.size}"
+        )
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -96,7 +110,14 @@ fun FriendDetailScreen(
             else -> {
                 FriendDetailContent(
                     friend = friend,
+                    requestCount = requestUiState.requests.size,
+                    netBalance = requestUiState.balance,
                     onBackClick = onBackClick,
+                    requests = requestUiState.requests,
+                    currentUserId = uiState.currentUserId,
+                    onRequestMoneyClick = {
+                        onRequestMoneyClick(friend.id)
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -107,12 +128,16 @@ fun FriendDetailScreen(
 @Composable
 private fun FriendDetailContent(
     friend: User,
+    requestCount: Int,
+    netBalance: Double,
+    requests: List<FriendRequest>,
+    currentUserId: String?,
     onBackClick: () -> Unit,
+    onRequestMoneyClick: () -> Unit,
     modifier: Modifier = Modifier
-) {
-    val balance = rememberMockBalance(friendId = friend.id)
+){
     val firstName = friend.displayName.trim().split(" ").firstOrNull() ?: friend.displayName
-
+    val balance = netBalance.toBalanceState()
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -207,7 +232,7 @@ private fun FriendDetailContent(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Button(
-                onClick = { /* hook for future Request Money flow */ },
+                onClick = onRequestMoneyClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -251,7 +276,34 @@ private fun FriendDetailContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            RecentActivityEmptyState()
+            if (requests.isEmpty()) {
+
+                RecentActivityEmptyState()
+
+            } else {
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+
+                    requests
+                        .sortedByDescending { it.createdAt }
+                        .take(5)
+                        .forEach { request ->
+
+                            FriendRequestActivityCard(
+                                title = if (request.creatorId == currentUserId) {
+                                    "You requested"
+                                } else {
+                                    "${friend.displayName} requested"
+                                },
+                                note = request.note,
+                                amount = request.amount,
+                                status = request.status
+                            )
+                    }
+                }
+            }
 
             TextButton(
                 onClick = { /* hook for future settlement history view */ },
@@ -300,22 +352,5 @@ private fun RecentActivityEmptyState() {
                 textAlign = TextAlign.Center
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun FriendDetailContentYouOwePreview() {
-    OweeTheme {
-        FriendDetailContent(
-            friend = User(
-                id = "owes_you_seed_1",
-                email = "rahul@example.com",
-                displayName = "Rahul Mehta",
-                username = "rahulm",
-                photoUrl = null
-            ),
-            onBackClick = {}
-        )
     }
 }

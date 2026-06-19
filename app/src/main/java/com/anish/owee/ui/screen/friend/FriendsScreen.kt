@@ -25,16 +25,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.anish.owee.data.model.Friendship
 import com.anish.owee.navigation.Route
 import com.anish.owee.ui.screen.friend.components.FriendCard
 import com.anish.owee.ui.screen.friend.components.FriendRequestCard
 import com.anish.owee.ui.screen.friend.components.FriendSearchBar
 import com.anish.owee.ui.screen.friend.components.SearchResultCard
-import com.anish.owee.ui.screen.friend.components.rememberMockBalance
 import com.anish.owee.ui.theme.TextSecondary
 import com.anish.owee.viewmodel.FriendshipViewModel
-
+import com.anish.owee.viewmodel.state.BalanceState
 @Composable
 fun FriendsScreen(
     navController: NavHostController,
@@ -147,7 +145,7 @@ fun FriendsScreen(
                     friend?.let {
                         FriendCard(
                             friend = it,
-                            balance = rememberMockBalance(friendId = it.id),
+                            balance = BalanceState.SettledUp,
                             onClick = {
                                 navController.navigate(
                                     "${Route.FriendDetail.route}/${it.id}"

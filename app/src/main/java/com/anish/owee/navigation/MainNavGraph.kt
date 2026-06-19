@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.anish.owee.ui.screen.friend.CreateFriendRequestScreen
 import com.anish.owee.ui.screen.friend.FriendDetailScreen
 import com.anish.owee.ui.screen.friend.FriendsScreen
 import com.anish.owee.ui.screen.group.GroupsScreen
@@ -43,7 +44,27 @@ fun MainNavGraph(
                 friendId = friendId,
                 onBackClick = {
                     navController.popBackStack()
+                },
+                onRequestMoneyClick = { selectedFriendId ->
+
+                    navController.navigate(
+                        "${Route.CreateFriendRequest.route}/$selectedFriendId"
+                    )
                 }
+            )
+        }
+
+        composable(
+            route = "${Route.CreateFriendRequest.route}/{friendId}"
+        ) { backStackEntry ->
+
+            val friendId =
+                backStackEntry.arguments
+                    ?.getString("friendId")
+                    .orEmpty()
+
+            CreateFriendRequestScreen(
+                friendId = friendId
             )
         }
 

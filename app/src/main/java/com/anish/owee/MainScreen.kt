@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.anish.owee.navigation.MainNavGraph
+import com.anish.owee.navigation.Route
 import com.anish.owee.ui.components.BottomNavigationBar
 import com.anish.owee.viewmodel.SessionViewModel
 
@@ -19,20 +20,30 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val topLevelRoutes = listOf(
+        Route.Home.route,
+        Route.Friends.route,
+        Route.Groups.route,
+        Route.Profile.route
+    )
+    val showBottomBar = currentRoute in topLevelRoutes
+
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(
-                currentRoute = currentRoute,
-                onNavigate = { route ->
-                    navController.navigate(route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
+            if (showBottomBar) {
+                BottomNavigationBar(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navController.navigate(route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
-                }
-            )
+                )
+            }
         }
     ) { paddingValues ->
         MainNavGraph(

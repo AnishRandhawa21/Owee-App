@@ -52,7 +52,7 @@ import com.anish.owee.viewmodel.state.toBalanceState
 fun FriendDetailScreen(
     friendId: String,
     onBackClick: () -> Unit = {},
-    onRequestMoneyClick: (String) -> Unit,
+    onRequestMoneyClick: (String, String) -> Unit,
     friendshipViewModel: FriendshipViewModel = viewModel(),
     friendRequestViewModel: FriendRequestViewModel = viewModel()
 ) {
@@ -116,7 +116,7 @@ fun FriendDetailScreen(
                     requests = requestUiState.requests,
                     currentUserId = uiState.currentUserId,
                     onRequestMoneyClick = {
-                        onRequestMoneyClick(friend.id)
+                        onRequestMoneyClick(friend.id, friend.displayName)
                     },
                     modifier = Modifier.fillMaxSize()
                 )

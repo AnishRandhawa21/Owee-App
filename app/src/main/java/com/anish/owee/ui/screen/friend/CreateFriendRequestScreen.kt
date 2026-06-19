@@ -1,46 +1,25 @@
 package com.anish.owee.ui.screen.friend
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.anish.owee.ui.theme.Background
-import com.anish.owee.ui.theme.OnPrimary
-import com.anish.owee.ui.theme.Outline
-import com.anish.owee.ui.theme.Primary
-import com.anish.owee.ui.theme.PrimaryContainer
-import com.anish.owee.ui.theme.TextPrimary
-import com.anish.owee.ui.theme.TextSecondary
-import com.anish.owee.ui.theme.OweeTheme
+import com.anish.owee.ui.theme.*
 import com.anish.owee.viewmodel.CreateFriendRequestViewModel
 
 @Composable
@@ -51,101 +30,125 @@ fun CreateFriendRequestScreen(
     viewModel: CreateFriendRequestViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
     val hasAmount = uiState.amount.isNotBlank() && uiState.amount != "0"
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
-            .navigationBarsPadding()
             .imePadding()
     ) {
-
-        // ── Back ──────────────────────────────────────────────────────────
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+        // --- Custom Header ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, start = 8.dp, end = 24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "Back",
-                tint = TextPrimary
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = TextPrimary
+                )
+            }
+            Text(
+                text = "Request Money",
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary
             )
         }
 
-        // ── Content ───────────────────────────────────────────────────────
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 24.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
+            // Recipient Section
+            Text(
+                text = "Requesting from",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
             Spacer(Modifier.height(4.dp))
-
-            // Recipient name
             Text(
                 text = friendName.ifBlank { "Friend" },
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = TextPrimary
             )
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(48.dp))
 
-            // Amount — OutlinedTextField with border stripped out so the
-            // native cursor renders correctly (no double-bar issue)
-            OutlinedTextField(
-                value = uiState.amount,
-                onValueChange = viewModel::updateAmount,
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 48.sp,
-                    color = TextPrimary
-                ),
-                placeholder = {
-                    Text(
-                        text = "0",
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = 48.sp,
-                            color = TextSecondary.copy(alpha = 0.35f)
-                        )
+            // Amount Input Section
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "₹",
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        fontSize = 56.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (hasAmount) Primary else TextSecondary.copy(alpha = 0.3f)
                     )
-                },
-                prefix = {
-                    Text(
-                        text = "₹",
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = 48.sp,
-                            color = if (hasAmount) TextPrimary
-                            else TextSecondary.copy(alpha = 0.5f)
-                        )
-                    )
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = Primary
                 )
-            )
+                
+                BasicTextField(
+                    value = uiState.amount,
+                    onValueChange = {
+                        if (it.length <= 7) viewModel.updateAmount(it)
+                    },
+                    modifier = Modifier.width(IntrinsicSize.Min),
+                    textStyle = MaterialTheme.typography.displayLarge.copy(
+                        fontSize = 56.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Start
+                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    cursorBrush = SolidColor(Primary),
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (uiState.amount.isEmpty()) {
+                                Text(
+                                    text = "0",
+                                    style = MaterialTheme.typography.displayLarge.copy(
+                                        fontSize = 56.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = TextSecondary.copy(alpha = 0.3f)
+                                    )
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
+            }
 
-            Spacer(Modifier.height(4.dp))
-            HorizontalDivider(color = Outline)
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(32.dp))
 
-            // Note
+            // Note Section
             OutlinedTextField(
                 value = uiState.note,
                 onValueChange = viewModel::updateNote,
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary),
+                modifier = Modifier.fillMaxWidth(0.8f),
                 placeholder = {
                     Text(
-                        text = "Add a note",
+                        text = "What's this for?",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = TextSecondary.copy(alpha = 0.5f)
+                        color = TextSecondary.copy(alpha = 0.4f)
                     )
                 },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    textAlign = TextAlign.Center,
+                    color = TextPrimary
+                ),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color.Transparent,
@@ -153,41 +156,39 @@ fun CreateFriendRequestScreen(
                     cursorColor = Primary
                 )
             )
+            
+            // Subtle indicator for note
+            Box(
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(1.5.dp)
+                    .background(Outline.copy(alpha = 0.3f))
+            )
         }
 
-        // ── Pay button — pinned above keyboard ────────────────────────────
-        Surface(
+        // --- Action Button ---
+        Button(
             onClick = { viewModel.createRequest(friendId) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            color = if (hasAmount) Primary else PrimaryContainer,
-            enabled = hasAmount
+                .padding(24.dp)
+                .height(56.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            enabled = hasAmount,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Primary,
+                contentColor = OnPrimary,
+                disabledContainerColor = PrimaryContainer.copy(alpha = 0.5f),
+                disabledContentColor = TextSecondary.copy(alpha = 0.5f)
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = if (hasAmount) "Pay ₹${uiState.amount}" else "Pay ₹0",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontSize = 16.sp,
-                    color = if (hasAmount) OnPrimary else TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-            }
+            Text(
+                text = if (hasAmount) "Send Request" else "Enter Amount",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
         }
-
-        Spacer(Modifier.height(20.dp))
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFCF9F8)
-@Composable
-private fun Preview() {
-    OweeTheme {
-        CreateFriendRequestScreen(
-            friendId = "123",
-            friendName = "Akshat Paul"
-        )
-    }
-}
+

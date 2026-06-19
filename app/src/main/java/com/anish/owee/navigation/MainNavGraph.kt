@@ -45,26 +45,34 @@ fun MainNavGraph(
                 onBackClick = {
                     navController.popBackStack()
                 },
-                onRequestMoneyClick = { selectedFriendId ->
+                onRequestMoneyClick = { selectedFriendId, selectedFriendName ->
 
                     navController.navigate(
-                        "${Route.CreateFriendRequest.route}/$selectedFriendId"
+                        "${Route.CreateFriendRequest.route}/$selectedFriendId/$selectedFriendName"
                     )
                 }
             )
         }
 
         composable(
-            route = "${Route.CreateFriendRequest.route}/{friendId}"
+            route = "${Route.CreateFriendRequest.route}/{friendId}/{friendName}"
         ) { backStackEntry ->
 
             val friendId =
                 backStackEntry.arguments
                     ?.getString("friendId")
                     .orEmpty()
+            val friendName =
+                backStackEntry.arguments
+                    ?.getString("friendName")
+                    .orEmpty()
 
             CreateFriendRequestScreen(
-                friendId = friendId
+                friendId = friendId,
+                friendName = friendName,
+                onBack = {
+                    navController.popBackStack()
+                }
             )
         }
 

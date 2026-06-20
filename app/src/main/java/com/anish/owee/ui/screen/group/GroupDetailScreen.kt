@@ -19,12 +19,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anish.owee.viewmodel.GroupDetailViewModel
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
+import kotlin.math.abs
 import com.anish.owee.data.model.Expense
 import com.anish.owee.ui.components.ExpenseDetailBottomSheet
+import com.anish.owee.ui.components.MemberBalanceBottomSheet
 
 @Composable
 fun GroupDetailScreen(
@@ -36,6 +38,9 @@ fun GroupDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedExpense by remember {
         mutableStateOf<Expense?>(null)
+    }
+    var selectedBalanceUserId by remember {
+        mutableStateOf<String?>(null)
     }
 
     LaunchedEffect(groupId) {
@@ -58,6 +63,35 @@ fun GroupDetailScreen(
                 selectedExpense = null
             }
         )
+    }
+
+    selectedBalanceUserId?.let { memberId ->
+
+        val member =
+            uiState.members.firstOrNull {
+                it.id == memberId
+            }
+
+        val currentUserId =
+            viewModel.getCurrentUserId()
+
+        if (
+            member != null &&
+            currentUserId != null
+        ) {
+
+            MemberBalanceBottomSheet(
+                memberName = member.displayName,
+                memberId = member.id,
+                currentUserId = currentUserId,
+                expenses = uiState.expenses,
+                participantsByExpense =
+                    uiState.participantsByExpense,
+                onDismiss = {
+                    selectedBalanceUserId = null
+                }
+            )
+        }
     }
 
     when {
@@ -98,6 +132,54 @@ fun GroupDetailScreen(
 
                         Text(
                             text = "@${member.username}"
+                        )
+                    }
+
+                    HorizontalDivider()
+                }
+                item {
+
+                    Text(
+                        text = "Balances",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+
+                items(uiState.balances) { balance ->
+
+                    val member =
+                        uiState.members.firstOrNull {
+                            it.id == balance.userId
+                        }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedBalanceUserId = balance.userId
+                            }
+                            .padding(16.dp)
+                    ) {
+
+                        Text(
+                            text = member?.displayName ?: "Unknown",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        Text(
+                            text =
+                                when {
+
+                                    balance.amount > 0 ->
+                                        "You are owed ₹${balance.amount}"
+
+                                    balance.amount < 0 ->
+                                        "You owe ₹${abs(balance.amount)}"
+
+                                    else ->
+                                        "Settled up"
+                                }
                         )
                     }
 

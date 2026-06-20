@@ -44,6 +44,17 @@ class GroupDetailViewModel : ViewModel() {
 
                 val expenses =
                     expenseRepository.getGroupExpenses(groupId)
+
+                val allParticipants =
+                    expenseRepository.getAllExpenseParticipants(
+                        expenses.map { it.id }
+                    )
+
+                val participantsByExpense =
+                    allParticipants.groupBy {
+                        it.expenseId
+                    }
+
                 expenses.forEach { expense ->
 
                     android.util.Log.d(
@@ -52,9 +63,9 @@ class GroupDetailViewModel : ViewModel() {
                     )
 
                     val participants =
-                        expenseRepository.getRawExpenseParticipants(
+                        participantsByExpense[
                             expense.id
-                        )
+                        ] ?: emptyList()
 
                     participants.forEach {
 
@@ -64,19 +75,13 @@ class GroupDetailViewModel : ViewModel() {
                         )
                     }
                 }
+
+
                 val currentUserId =
                     groupRepository.getCurrentUserId()
                         ?: return@launch
 
-                val participantsByExpense =
-                    expenses.associate { expense ->
 
-                        expense.id to
-                                expenseRepository
-                                    .getRawExpenseParticipants(
-                                        expense.id
-                                    )
-                    }
 
                 val balances =
                     GroupBalanceCalculator
@@ -102,7 +107,9 @@ class GroupDetailViewModel : ViewModel() {
                         isLoading = false,
                         members = members,
                         expenses = expenses,
-                        balances = balances
+                        balances = balances,
+                        participantsByExpense =
+                            participantsByExpense
                     )
 
             } catch (e: Exception) {
@@ -114,5 +121,8 @@ class GroupDetailViewModel : ViewModel() {
                     )
             }
         }
+    }
+    fun getCurrentUserId(): String? {
+        return groupRepository.getCurrentUserId()
     }
 }

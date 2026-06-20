@@ -151,4 +151,73 @@ class ExpenseRepositoryImpl : ExpenseRepository {
                 emptyList()
             }
         }
+
+    override suspend fun getGroupExpenseParticipants(
+        groupId: String
+    ): List<ExpenseParticipant> =
+        withContext(Dispatchers.IO) {
+
+            try {
+
+                postgrest["expense_participants"]
+                    .select(
+                        columns = io.github.jan.supabase.postgrest.query.Columns.raw(
+                            """
+                        *,
+                        expense:expenses!inner(
+                            group_id
+                        )
+                        """.trimIndent()
+                        )
+                    ) {
+                        filter {
+                            eq(
+                                "expense.group_id",
+                                groupId
+                            )
+                        }
+                    }
+                    .decodeList<ExpenseParticipant>()
+
+            } catch (e: Exception) {
+
+                android.util.Log.e(
+                    "OWEE_EXPENSE",
+                    "Load group participants failed",
+                    e
+                )
+
+                emptyList()
+            }
+        }
+
+    override suspend fun getAllExpenseParticipants(
+        expenseIds: List<String>
+    ): List<ExpenseParticipant> =
+        withContext(Dispatchers.IO) {
+
+            try {
+
+                postgrest["expense_participants"]
+                    .select {
+                        filter {
+                            isIn(
+                                "expense_id",
+                                expenseIds
+                            )
+                        }
+                    }
+                    .decodeList<ExpenseParticipant>()
+
+            } catch (e: Exception) {
+
+                android.util.Log.e(
+                    "OWEE_EXPENSE",
+                    "Load all participants failed",
+                    e
+                )
+
+                emptyList()
+            }
+        }
 }

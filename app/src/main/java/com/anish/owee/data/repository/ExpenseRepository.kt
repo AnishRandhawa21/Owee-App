@@ -25,4 +25,12 @@ interface ExpenseRepository {
     suspend fun getRawExpenseParticipants(
         expenseId: String
     ): List<ExpenseParticipant>
+
+    suspend fun getGroupExpenseParticipants(
+        groupId: String
+    ): List<ExpenseParticipant>
+
+    suspend fun getAllExpenseParticipants(
+        expenseIds: List<String>
+    ): List<ExpenseParticipant>
 }

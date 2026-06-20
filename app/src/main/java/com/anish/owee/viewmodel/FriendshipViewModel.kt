@@ -90,30 +90,38 @@ class FriendshipViewModel : ViewModel() {
     fun updateSearchQuery(query: String) {
         _uiState.value =
             _uiState.value.copy(
-                searchQuery = query
+                searchQuery = query,
+                searchResults = emptyList(),
+                hasSearched = false
             )
     }
 
     fun searchUsers() {
         viewModelScope.launch {
 
-            try {
+            _uiState.value = _uiState.value.copy(isSearching = true, hasSearched = false)
 
+            try {
+                val currentUserId = _uiState.value.currentUserId
                 val results =
                     userSearchRepository.searchUsers(
                         _uiState.value.searchQuery
-                    )
+                    ).filter { it.id != currentUserId }
 
                 _uiState.value =
                     _uiState.value.copy(
-                        searchResults = results
+                        searchResults = results,
+                        isSearching = false,
+                        hasSearched = true
                     )
 
             } catch (e: Exception) {
 
                 _uiState.value =
                     _uiState.value.copy(
-                        error = e.message
+                        error = e.message,
+                        isSearching = false,
+                        hasSearched = true
                     )
             }
         }

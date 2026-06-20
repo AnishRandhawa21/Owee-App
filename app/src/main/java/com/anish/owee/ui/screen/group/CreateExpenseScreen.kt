@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -93,198 +94,193 @@ fun CreateExpenseScreen(
             )
         }
 
-        Column(modifier = Modifier.fillMaxSize().imePadding()) {
-            // --- Custom Header ---
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp, start = 8.dp, end = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground
+        // Main content remains scrollable behind the FAB
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            contentPadding = PaddingValues(bottom = 160.dp) // Extra padding so content scrolls above FAB
+        ) {
+            // Header
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, start = 8.dp, end = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Text(
+                        text = "Add Expense",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 22.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
-                Text(
-                    text = "Add Expense",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
             }
 
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // --- Amount Input Section ---
-                item {
-                    Spacer(Modifier.height(40.dp))
+            // --- Amount Input Section ---
+            item {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Total Amount",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                ) {
                     Text(
-                        text = "Total Amount",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "₹",
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 56.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (hasAmount) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    ) {
-                        Text(
-                            text = "₹",
-                            style = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = 56.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = if (hasAmount) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                            )
-                        )
-                        
-                        BasicTextField(
-                            value = uiState.amount,
-                            onValueChange = {
-                                if (it.length <= 9) viewModel.updateAmount(it)
-                            },
-                            modifier = Modifier.width(IntrinsicSize.Min),
-                            textStyle = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = 56.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Start
-                            ),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            decorationBox = { innerTextField ->
-                                Box(contentAlignment = Alignment.CenterStart) {
-                                    if (uiState.amount.isEmpty()) {
-                                        Text(
-                                            text = "0",
-                                            style = MaterialTheme.typography.displayLarge.copy(
-                                                fontSize = 56.sp,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                                            )
-                                        )
-                                    }
-                                    innerTextField()
-                                }
-                            }
-                        )
-                    }
-                }
-
-                // --- Title/Note Input ---
-                item {
-                    Spacer(Modifier.height(24.dp))
-                    OutlinedTextField(
-                        value = uiState.title,
+                    
+                    BasicTextField(
+                        value = uiState.amount,
                         onValueChange = {
-                            viewModel.updateTitle(it)
-                            triedToSubmit = false
+                            if (it.length <= 9) viewModel.updateAmount(it)
                         },
-                        modifier = Modifier.fillMaxWidth(0.8f),
-                        placeholder = {
-                            Text(
-                                text = "What's this for?",
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                            )
-                        },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                        modifier = Modifier.width(IntrinsicSize.Min),
+                        textStyle = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 56.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Start
                         ),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
-                            cursorColor = MaterialTheme.colorScheme.primary
-                        )
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        decorationBox = { innerTextField ->
+                            Box(contentAlignment = Alignment.CenterStart) {
+                                if (uiState.amount.isEmpty()) {
+                                    Text(
+                                        text = "0",
+                                        style = MaterialTheme.typography.displayLarge.copy(
+                                            fontSize = 56.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                        )
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
                     )
-                    // Subtle indicator
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(1.5.dp)
-                            .offset(x = shakeOffset.value.dp)
-                            .background(
-                                if (triedToSubmit && uiState.title.isBlank()) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                            )
-                    )
-                    Spacer(Modifier.height(48.dp))
                 }
+            }
 
-                // --- Participant Selection Header ---
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            // --- Title/Note Input ---
+            item {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.title,
+                    onValueChange = {
+                        viewModel.updateTitle(it)
+                        triedToSubmit = false
+                    },
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    placeholder = {
+                        Text(
+                            text = "What's this for?",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
+                    },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                // Subtle indicator
+                Box(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(1.5.dp)
+                        .offset(x = shakeOffset.value.dp)
+                        .background(
+                            if (triedToSubmit && uiState.title.isBlank()) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+                )
+                Spacer(Modifier.height(48.dp))
+            }
+
+            // --- Participant Selection Header ---
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Split with",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                        shape = CircleShape
                     ) {
                         Text(
-                            text = "Split with",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = "${uiState.selectedParticipantIds.size} selected",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                            text = "${uiState.selectedParticipantIds.size} selected",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
-                        }
+                        )
                     }
                 }
+            }
 
-                // --- Members List ---
-                items(uiState.members) { member ->
-                    ParticipantSelectionItem(
-                        user = member,
-                        isSelected = uiState.selectedParticipantIds.contains(member.id),
-                        onToggle = { viewModel.toggleParticipant(member.id) }
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                }
-
-                item {
-                    Spacer(Modifier.height(100.dp))
-                }
+            // --- Members List ---
+            items(uiState.members) { member ->
+                ParticipantSelectionItem(
+                    user = member,
+                    isSelected = uiState.selectedParticipantIds.contains(member.id),
+                    onToggle = { viewModel.toggleParticipant(member.id) }
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
             }
         }
 
-        // --- Action Button ---
+        // --- Action Button (Truly Hovering) ---
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(24.dp)
-                .height(56.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
+                .fillMaxWidth()
+                .imePadding() // Only the button moves up with keyboard
+                .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {
             Button(
                 onClick = { 
@@ -304,7 +300,13 @@ fun CreateExpenseScreen(
                         viewModel.createExpense(groupId) 
                     }
                 },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    },
                 shape = MaterialTheme.shapes.medium,
                 enabled = hasAmount && uiState.selectedParticipantIds.isNotEmpty() && !uiState.isLoading,
                 interactionSource = interactionSource,
@@ -312,7 +314,10 @@ fun CreateExpenseScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                 ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 2.dp
+                )
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(

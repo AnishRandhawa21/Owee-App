@@ -16,6 +16,10 @@ data class FriendshipUiState(
 
     val searchResults: List<SearchUser> = emptyList(),
 
+    val isSearching: Boolean = false,
+
+    val hasSearched: Boolean = false,
+
     val currentUserId: String? = null,
 
     val error: String? = null

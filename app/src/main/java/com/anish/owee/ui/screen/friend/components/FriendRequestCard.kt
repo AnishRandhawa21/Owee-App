@@ -1,41 +1,24 @@
 package com.anish.owee.ui.screen.friend.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.anish.owee.ui.theme.ErrorContainer
-import com.anish.owee.ui.theme.OweeTheme
-import com.anish.owee.ui.theme.Surface
 import com.anish.owee.ui.theme.SuccessContainer
 import com.anish.owee.ui.theme.TextSecondary
 
-/**
- * Incoming friend request row with Accept/Reject. Same data and the same
- * two callbacks as before (acceptFriendRequest / rejectFriendRequest by
- * friendship id) — only the presentation changed.
- */
 @Composable
 fun FriendRequestCard(
     senderDisplayName: String,
@@ -45,20 +28,18 @@ fun FriendRequestCard(
     onReject: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+        shape = MaterialTheme.shapes.large
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
             FriendAvatar(
                 photoUrl = senderPhotoUrl,
                 displayName = senderDisplayName,
@@ -71,13 +52,13 @@ fun FriendRequestCard(
             ) {
                 Text(
                     text = senderDisplayName,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "@$senderUsername",
+                    text = "wants to be friends",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary,
                     maxLines = 1,
@@ -85,21 +66,27 @@ fun FriendRequestCard(
                 )
             }
 
-            RequestActionButton(
-                icon = Icons.Rounded.Close,
-                containerColor = ErrorContainer,
-                contentColor = MaterialTheme.colorScheme.error,
-                contentDescription = "Reject request",
-                onClick = onReject
-            )
+            Row(
+                modifier = Modifier.wrapContentWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RequestActionButton(
+                    icon = Icons.Rounded.Close,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.error,
+                    contentDescription = "Reject request",
+                    onClick = onReject
+                )
 
-            RequestActionButton(
-                icon = Icons.Rounded.Check,
-                containerColor = SuccessContainer,
-                contentColor = com.anish.owee.ui.theme.Success,
-                contentDescription = "Accept request",
-                onClick = onAccept
-            )
+                RequestActionButton(
+                    icon = Icons.Rounded.Check,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    contentDescription = "Accept request",
+                    onClick = onAccept
+                )
+            }
         }
     }
 }
@@ -112,37 +99,20 @@ private fun RequestActionButton(
     contentDescription: String,
     onClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier.size(36.dp)
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(36.dp)
+            .background(containerColor, shape = CircleShape),
+        colors = IconButtonDefaults.iconButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        )
     ) {
-        IconButton(
-            onClick = onClick,
-            modifier = Modifier
-                .size(36.dp)
-                .background(containerColor, shape = androidx.compose.foundation.shape.CircleShape)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = contentColor,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun FriendRequestCardPreview() {
-    OweeTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            FriendRequestCard(
-                senderDisplayName = "Priya Sharma",
-                senderUsername = "priyas",
-                senderPhotoUrl = null,
-                onAccept = {},
-                onReject = {}
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }

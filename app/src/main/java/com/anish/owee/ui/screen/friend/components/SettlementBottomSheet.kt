@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.anish.owee.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,8 +35,8 @@ fun SettlementBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Surface,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Outline.copy(alpha = 0.3f)) }
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outlineVariant) }
     ) {
         Column(
             modifier = Modifier
@@ -46,9 +47,11 @@ fun SettlementBottomSheet(
         ) {
             Text(
                 text = "Settlement Summary",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.5).sp
+                ),
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(Modifier.height(32.dp))
@@ -63,20 +66,20 @@ fun SettlementBottomSheet(
                     label = "You requested",
                     amount = requestedByMe.toInt(),
                     icon = Icons.Rounded.NorthEast,
-                    color = Primary
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 Box(
                     modifier = Modifier
                         .size(1.dp, 40.dp)
-                        .background(Outline.copy(alpha = 0.2f))
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 )
 
                 SettlementItem(
                     label = "$friendName requested",
                     amount = requestedByFriend.toInt(),
                     icon = Icons.Rounded.SouthWest,
-                    color = Color(0xFFE57373) // Soft Red
+                    color = MaterialTheme.colorScheme.error
                 )
             }
 
@@ -85,11 +88,8 @@ fun SettlementBottomSheet(
             // Final Balance Card
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = SurfaceVariant.copy(alpha = 0.5f),
-                border = if (isSettled) null else MaterialTheme.shapes.extraLarge.let { 
-                    null // Can add border if needed
-                }
+                shape = MaterialTheme.shapes.large,
+                color = (if (isSettled) MaterialTheme.colorScheme.surfaceVariant else if (isOwedByFriend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error).copy(alpha = 0.1f)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -97,21 +97,19 @@ fun SettlementBottomSheet(
                 ) {
                     Text(
                         text = if (isSettled) "All Caught Up" else "Net Balance",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = TextSecondary
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = (if (isSettled) MaterialTheme.colorScheme.onSurfaceVariant else if (isOwedByFriend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error).copy(alpha = 0.7f)
                     )
                     
                     Spacer(Modifier.height(8.dp))
                     
                     Text(
                         text = "₹$absBalance",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = when {
-                            isSettled -> TextPrimary
-                            isOwedByFriend -> Primary
-                            else -> Color(0xFFE57373)
-                        }
+                        style = MaterialTheme.typography.displayMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-1).sp
+                        ),
+                        color = if (isSettled) MaterialTheme.colorScheme.onSurface else if (isOwedByFriend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -124,7 +122,7 @@ fun SettlementBottomSheet(
                             imageVector = if (isSettled) Icons.Rounded.CheckCircle else Icons.Rounded.Info,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = if (isSettled) Primary else TextSecondary
+                            tint = if (isSettled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
@@ -134,7 +132,7 @@ fun SettlementBottomSheet(
                                 else -> "No pending requests"
                             },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -153,16 +151,16 @@ fun SettlementBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = MaterialTheme.shapes.large,
+                shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSettled) SurfaceVariant else Primary,
-                    contentColor = if (isSettled) TextPrimary else OnPrimary
-                )
+                    containerColor = if (isSettled) MaterialTheme.colorScheme.surfaceVariant else if (isOwedByFriend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    contentColor = if (isSettled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
             ) {
                 Text(
                     text = if (isSettled) "Close" else "Settle Now",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
         }
@@ -197,15 +195,14 @@ private fun SettlementItem(
         
         Text(
             text = "₹$amount",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface
         )
         
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1
         )
     }

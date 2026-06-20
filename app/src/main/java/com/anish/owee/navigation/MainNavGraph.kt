@@ -15,7 +15,7 @@ import com.anish.owee.ui.screen.group.GroupsScreen
 import com.anish.owee.ui.screen.home.HomeScreen
 import com.anish.owee.ui.screen.profile.ProfileScreen
 import com.anish.owee.viewmodel.SessionViewModel
-
+import com.anish.owee.ui.screen.settlement.SettlementScreen
 @Composable
 fun MainNavGraph(
     navController: NavHostController,
@@ -52,6 +52,11 @@ fun MainNavGraph(
 
                     navController.navigate(
                         "${Route.CreateFriendRequest.route}/$selectedFriendId/$selectedFriendName"
+                    )
+                },
+                onSettlementClick = { selectedFriendId, _, amount ->
+                    navController.navigate(
+                        "${Route.Settlement.route}/FRIEND/$selectedFriendId/ME/$amount"
                     )
                 }
             )
@@ -128,6 +133,15 @@ fun MainNavGraph(
                 },
                 onBackClick = {
                     navController.popBackStack()
+                },
+                onSettlementClick = {
+                        selectedGroupId,
+                        memberId,
+                        amount ->
+
+                    navController.navigate(
+                        "${Route.Settlement.route}/GROUP/$selectedGroupId/$memberId/$amount"
+                    )
                 }
             )
         }
@@ -136,6 +150,41 @@ fun MainNavGraph(
                 onBack = {
                     navController.popBackStack()
                 }
+            )
+        }
+
+        composable(
+            route =
+                "${Route.Settlement.route}/{sourceType}/{sourceId}/{userId}/{amount}"
+        ) { backStackEntry ->
+
+            val sourceType =
+                backStackEntry.arguments
+                    ?.getString("sourceType")
+                    .orEmpty()
+
+            val sourceId =
+                backStackEntry.arguments
+                    ?.getString("sourceId")
+                    .orEmpty()
+
+            val userId =
+                backStackEntry.arguments
+                    ?.getString("userId")
+                    .orEmpty()
+
+            val amount =
+                backStackEntry.arguments
+                    ?.getString("amount")
+                    ?.toDoubleOrNull()
+                    ?: 0.0
+
+            SettlementScreen(
+                sourceType = sourceType,
+                sourceId = sourceId,
+                userId = userId,
+                amount = amount,
+
             )
         }
 

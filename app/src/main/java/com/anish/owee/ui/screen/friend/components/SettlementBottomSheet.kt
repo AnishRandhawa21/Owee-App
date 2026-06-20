@@ -27,11 +27,11 @@ fun SettlementBottomSheet(
     requestedByFriend: Double,
     friendName: String,
     onDismiss: () -> Unit,
-    onSettleNow: () -> Unit
+    onSettleNow: (Double) -> Unit
 ) {
     val isOwedByFriend = balance > 0
     val isSettled = balance == 0.0
-    val absBalance = kotlin.math.abs(balance).toInt()
+    val absBalance = kotlin.math.abs(balance)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -104,7 +104,7 @@ fun SettlementBottomSheet(
                     Spacer(Modifier.height(8.dp))
                     
                     Text(
-                        text = "₹$absBalance",
+                        text = "₹${"%.2f".format(absBalance)}",
                         style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = (-1).sp
@@ -127,8 +127,8 @@ fun SettlementBottomSheet(
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = when {
-                                balance > 0 -> "$friendName owes you ₹$absBalance"
-                                balance < 0 -> "You owe $friendName ₹$absBalance"
+                                balance > 0 -> "$friendName owes you ₹${"%.2f".format(absBalance)}"
+                                balance < 0 -> "You owe $friendName ₹${"%.2f".format(absBalance)}"
                                 else -> "No pending requests"
                             },
                             style = MaterialTheme.typography.bodyMedium,
@@ -140,28 +140,44 @@ fun SettlementBottomSheet(
 
             Spacer(Modifier.height(32.dp))
 
-            Button(
-                onClick = {
-                    if (isSettled) {
-                        onDismiss()
-                    } else {
-                        onSettleNow()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSettled) MaterialTheme.colorScheme.surfaceVariant else if (isOwedByFriend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                    contentColor = if (isSettled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-            ) {
-                Text(
-                    text = if (isSettled) "Close" else "Settle Now",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
+            if (!isSettled && !isOwedByFriend) {
+                Button(
+                    onClick = {
+                        onSettleNow(absBalance)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                ) {
+                    Text(
+                        text = "Settle Now",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                ) {
+                    Text(
+                        text = if (isSettled) "Close" else "Settle Now",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
         }
     }

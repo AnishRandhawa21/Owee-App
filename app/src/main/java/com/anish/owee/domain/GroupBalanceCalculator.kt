@@ -3,17 +3,21 @@ package com.anish.owee.domain
 import com.anish.owee.data.model.Expense
 import com.anish.owee.data.model.ExpenseParticipant
 import com.anish.owee.data.model.GroupMemberBalance
+import com.anish.owee.data.model.Settlement
 
 object GroupBalanceCalculator {
 
     fun calculateBalances(
         currentUserId: String,
         expenses: List<Expense>,
-        participantsByExpense: Map<String, List<ExpenseParticipant>>
+        participantsByExpense: Map<String, List<ExpenseParticipant>>,
+        settlements: List<Settlement>
     ): List<GroupMemberBalance> {
 
         val memberBalances =
             mutableMapOf<String, Double>()
+
+        // EXPENSES
 
         expenses.forEach { expense ->
 
@@ -52,12 +56,40 @@ object GroupBalanceCalculator {
             }
         }
 
-        return memberBalances.map { (userId, amount) ->
+        // SETTLEMENTS
 
-            GroupMemberBalance(
-                userId = userId,
-                amount = amount
-            )
+        settlements.forEach { settlement ->
+
+            when {
+
+                settlement.receiverId == currentUserId -> {
+
+                    memberBalances[settlement.payerId] =
+                        memberBalances.getOrDefault(
+                            settlement.payerId,
+                            0.0
+                        ) - settlement.amount
+                }
+
+                settlement.payerId == currentUserId -> {
+
+                    memberBalances[settlement.receiverId] =
+                        memberBalances.getOrDefault(
+                            settlement.receiverId,
+                            0.0
+                        ) + settlement.amount
+                }
+            }
         }
+
+        return memberBalances
+            .filterValues { kotlin.math.abs(it) > 0.01 }
+            .map { (userId, amount) ->
+
+                GroupMemberBalance(
+                    userId = userId,
+                    amount = amount
+                )
+            }
     }
 }

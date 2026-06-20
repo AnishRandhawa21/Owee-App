@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.anish.owee.data.repository.SettlementRepository
+import com.anish.owee.data.repository.SettlementRepositoryImpl
 
 class GroupDetailViewModel : ViewModel() {
 
@@ -21,6 +23,8 @@ class GroupDetailViewModel : ViewModel() {
     private val expenseRepository: ExpenseRepository =
         ExpenseRepositoryImpl()
 
+    private val settlementRepository: SettlementRepository =
+        SettlementRepositoryImpl()
     private val _uiState =
         MutableStateFlow(GroupDetailUiState())
 
@@ -47,6 +51,12 @@ class GroupDetailViewModel : ViewModel() {
 
                 val expenses =
                     expenseRepository.getGroupExpenses(groupId)
+
+                val settlements =
+                    settlementRepository.getSettlements(
+                        sourceType = "GROUP",
+                        sourceId = groupId
+                    )
 
                 val allParticipants =
                     expenseRepository.getAllExpenseParticipants(
@@ -91,7 +101,8 @@ class GroupDetailViewModel : ViewModel() {
                         .calculateBalances(
                             currentUserId = currentUserId,
                             expenses = expenses,
-                            participantsByExpense = participantsByExpense
+                            participantsByExpense = participantsByExpense,
+                            settlements = settlements
                         )
                 balances.forEach {
 

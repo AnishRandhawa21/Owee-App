@@ -13,4 +13,11 @@ interface AuthRepository {
     fun getCurrentEmail(): String?
     fun getCurrentPhotoUrl(): String?
     fun getCurrentFullName(): String?
+    suspend fun updateUpiId(
+        upiId: String
+    ): Result<Unit>
+
+    suspend fun getUserById(
+        userId: String
+    ): User?
 }

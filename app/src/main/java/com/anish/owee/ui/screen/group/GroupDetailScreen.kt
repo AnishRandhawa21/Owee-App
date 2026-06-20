@@ -44,6 +44,11 @@ fun GroupDetailScreen(
     groupId: String,
     onAddExpenseClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
+    onSettlementClick: (
+        String,
+        String,
+        Double
+    ) -> Unit = { _, _, _ -> },
     viewModel: GroupDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -253,7 +258,15 @@ fun GroupDetailScreen(
                 currentUserId = currentUserId,
                 expenses = uiState.expenses,
                 participantsByExpense = uiState.participantsByExpense,
-                onDismiss = { selectedBalanceUserId = null }
+                onDismiss = { selectedBalanceUserId = null },
+                onSettleClick = { memberId, amount ->
+
+                    onSettlementClick(
+                        groupId,
+                        memberId,
+                        amount
+                    )
+                }
             )
         }
     }

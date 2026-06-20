@@ -124,4 +124,67 @@ class AuthRepositoryImpl : AuthRepository {
     override fun getCurrentFullName(): String? {
         return auth.currentUserOrNull()?.userMetadata?.get("full_name")?.jsonPrimitive?.content
     }
+
+    override suspend fun updateUpiId(
+        upiId: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+
+        val userId =
+            auth.currentUserOrNull()?.id
+                ?: return@withContext Result.failure(
+                    Exception("User not logged in")
+                )
+
+        try {
+
+            postgrest["users"]
+                .update(
+                    {
+                        set("upi_id", upiId)
+                    }
+                ) {
+                    filter {
+                        eq("id", userId)
+                    }
+                }
+
+            Result.success(Unit)
+
+        } catch (e: Exception) {
+
+            Log.e(
+                TAG,
+                "Failed to update UPI ID",
+                e
+            )
+
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getUserById(
+        userId: String
+    ): User? = withContext(Dispatchers.IO) {
+
+        try {
+
+            postgrest["users"]
+                .select {
+                    filter {
+                        eq("id", userId)
+                    }
+                }
+                .decodeSingleOrNull<User>()
+
+        } catch (e: Exception) {
+
+            Log.e(
+                TAG,
+                "Failed to load user: $userId",
+                e
+            )
+
+            null
+        }
+    }
 }

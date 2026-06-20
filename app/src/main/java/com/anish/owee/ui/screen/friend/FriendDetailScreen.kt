@@ -45,6 +45,7 @@ fun FriendDetailScreen(
     friendId: String,
     onBackClick: () -> Unit = {},
     onRequestMoneyClick: (String, String) -> Unit,
+    onSettlementClick: (String, String, Double) -> Unit,
     friendshipViewModel: FriendshipViewModel = viewModel(),
     friendRequestViewModel: FriendRequestViewModel = viewModel()
 ) {
@@ -308,7 +309,13 @@ fun FriendDetailScreen(
                         requestedByFriend = requestUiState.requestedByFriend,
                         friendName = friend.displayName,
                         onDismiss = { showSettlementSheet = false },
-                        onSettleNow = { /* Settlement logic */ }
+                        onSettleNow = { amount ->
+                            onSettlementClick(
+                                friend.id,
+                                friend.displayName,
+                                amount
+                            )
+                        }
                     )
                 }
             }

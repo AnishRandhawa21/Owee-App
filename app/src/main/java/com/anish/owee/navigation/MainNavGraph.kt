@@ -54,9 +54,9 @@ fun MainNavGraph(
                         "${Route.CreateFriendRequest.route}/$selectedFriendId/$selectedFriendName"
                     )
                 },
-                onSettlementClick = { selectedFriendId, _, amount ->
+                onSettlementClick = { friendshipId, recipientUserId, amount ->
                     navController.navigate(
-                        "${Route.Settlement.route}/FRIEND/$selectedFriendId/ME/$amount"
+                        "${Route.Settlement.route}/FRIEND/$friendshipId/$recipientUserId/$amount"
                     )
                 }
             )

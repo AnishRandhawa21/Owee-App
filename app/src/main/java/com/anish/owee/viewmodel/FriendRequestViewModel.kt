@@ -3,6 +3,11 @@ package com.anish.owee.viewmodel
 import androidx.lifecycle.ViewModel
 import com.anish.owee.data.repository.FriendRequestRepository
 import com.anish.owee.data.repository.FriendRequestRepositoryImpl
+import com.anish.owee.data.repository.FriendshipRepository
+import com.anish.owee.data.repository.FriendshipRepositoryImpl
+import com.anish.owee.data.repository.SettlementRepository
+import com.anish.owee.data.repository.SettlementRepositoryImpl
+import com.anish.owee.viewmodel.state.FriendActivity
 import com.anish.owee.viewmodel.state.FriendRequestUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +19,12 @@ class FriendRequestViewModel : ViewModel() {
 
     private val repository: FriendRequestRepository =
         FriendRequestRepositoryImpl()
+
+    private val friendshipRepository: FriendshipRepository =
+        FriendshipRepositoryImpl()
+
+    private val settlementRepository: SettlementRepository =
+        SettlementRepositoryImpl()
 
     private val _uiState =
         MutableStateFlow(FriendRequestUiState())
@@ -34,46 +45,112 @@ class FriendRequestViewModel : ViewModel() {
                 )
 
             try {
+                val currentUserId =
+                    repository.getCurrentUserId()
+                        ?: return@launch
 
                 val requests =
                     repository.getRequestsForFriend(friendId)
 
+                // Get the friendshipId to fetch shared settlements
+                val friendship = friendshipRepository.getAcceptedFriendships().firstOrNull { 
+                    it.senderId == friendId || it.receiverId == friendId 
+                }
+                
+                val settlements = if (friendship != null) {
+                    settlementRepository.getSettlements(
+                        sourceType = "FRIEND",
+                        sourceId = friendship.id
+                    )
+                } else {
+                    emptyList()
+                }
 
-                val currentUserId =
-                    repository.getCurrentUserId()
+                // 1. Unified Activity List with Mutual Netting logic
+                val sortedRequests = requests.sortedBy { it.createdAt }
+                
+                // Final Ledger Calculation
+                val totalRequestedByMe = requests.filter { it.creatorId == currentUserId }.sumOf { it.amount }
+                val totalRequestedByFriend = requests.filter { it.creatorId != currentUserId }.sumOf { it.amount }
+                val totalPaidByMe = settlements.filter { it.payerId == currentUserId }.sumOf { it.amount }
+                val totalReceivedByMe = settlements.filter { it.payerId != currentUserId }.sumOf { it.amount }
+                
+                val netBalance = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
+                
+                // Determine how much of the debt/credit has been "Cleared"
+                var creditToApplyToMyRequests = 0.0
+                var creditToApplyToFriendRequests = 0.0
+                
+                if (netBalance >= -0.01) {
+                    // Friend owes me or we are settled. 
+                    // This means ALL of the friend's requests to me are effectively "PAID" (netted out).
+                    creditToApplyToFriendRequests = totalRequestedByFriend
+                    // My requests to the friend are paid except for the remaining positive balance.
+                    creditToApplyToMyRequests = totalRequestedByMe - kotlin.math.max(0.0, netBalance)
+                } else {
+                    // I owe the friend.
+                    // This means ALL my requests to the friend are "PAID" (netted out).
+                    creditToApplyToMyRequests = totalRequestedByMe
+                    // Friend's requests to me are paid except for the remaining negative balance.
+                    creditToApplyToFriendRequests = totalRequestedByFriend - kotlin.math.abs(netBalance)
+                }
 
-                val requestedByMe =
-                    requests
-                        .filter { it.creatorId == currentUserId }
-                        .sumOf { it.amount }
-
-                val requestedByFriend =
-                    requests
-                        .filter { it.creatorId != currentUserId }
-                        .sumOf { it.amount }
-
-                val balance = requests
-                    .filter { it.status == "pending" }
-                    .sumOf { request ->
-
-                        if (request.creatorId == currentUserId) {
-                            request.amount
-                        } else {
-                            -request.amount
-                        }
+                val activities = mutableListOf<FriendActivity>()
+                
+                sortedRequests.forEach { request ->
+                    val isOwedToMe = request.creatorId == currentUserId
+                    
+                    val displayStatus = if (isOwedToMe) {
+                        val amountCovered = kotlin.math.min(request.amount, creditToApplyToMyRequests)
+                        creditToApplyToMyRequests -= amountCovered
+                        if (amountCovered >= request.amount - 0.01) "paid" else request.status
+                    } else {
+                        val amountCovered = kotlin.math.min(request.amount, creditToApplyToFriendRequests)
+                        creditToApplyToFriendRequests -= amountCovered
+                        if (amountCovered >= request.amount - 0.01) "paid" else request.status
                     }
+
+                    activities.add(
+                        FriendActivity(
+                            id = request.id,
+                            title = if (isOwedToMe) "You requested" else "Requested from you",
+                            note = request.note,
+                            amount = request.amount,
+                            status = displayStatus,
+                            createdAt = request.createdAt,
+                            type = "request"
+                        )
+                    )
+                }
+                
+                settlements.forEach { settlement ->
+                    activities.add(
+                        FriendActivity(
+                            id = settlement.id,
+                            title = if (settlement.payerId == currentUserId) "You paid" else "You received",
+                            note = "Settlement via UPI",
+                            amount = settlement.amount,
+                            status = "paid",
+                            createdAt = settlement.createdAt,
+                            type = "settlement"
+                        )
+                    )
+                }
 
                 _uiState.value =
                     _uiState.value.copy(
                         isLoading = false,
-                        requests = requests,
-                        balance = balance,
-                        requestedByMe = requestedByMe,
-                        requestedByFriend = requestedByFriend
+                        requests = requests.sortedByDescending { it.createdAt },
+                        settlements = settlements.sortedByDescending { it.createdAt },
+                        activities = activities.sortedByDescending { it.createdAt },
+                        balance = netBalance,
+                        requestedByMe = totalRequestedByMe,
+                        requestedByFriend = totalRequestedByFriend
                     )
+
                 android.util.Log.d(
-                    "OWEE_REQUESTS",
-                    "Loaded ${requests.size} requests"
+                    "OWEE_FRIEND_BALANCE",
+                    "FriendId=$friendId, Balance=$netBalance"
                 )
 
             } catch (e: Exception) {

@@ -140,7 +140,7 @@ fun SettlementBottomSheet(
 
             Spacer(Modifier.height(32.dp))
 
-            if (!isSettled && !isOwedByFriend) {
+            if (balance < -0.01) {
                 Button(
                     onClick = {
                         onSettleNow(absBalance)
@@ -174,7 +174,7 @@ fun SettlementBottomSheet(
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     Text(
-                        text = if (isSettled) "Close" else "Settle Now",
+                        text = "Close",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }

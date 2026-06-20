@@ -69,14 +69,13 @@ fun FriendDetailScreen(
         }
     }
 
-    val friend: User? = uiState.friends
-        .firstNotNullOfOrNull { friendship ->
-            when {
-                friendship.sender?.id == friendId -> friendship.sender
-                friendship.receiver?.id == friendId -> friendship.receiver
-                else -> null
-            }
-        }
+    val friendship = uiState.friends.firstOrNull { 
+        it.sender?.id == friendId || it.receiver?.id == friendId 
+    }
+    
+    val friend: User? = friendship?.let { 
+        if (it.sender?.id == friendId) it.sender else it.receiver 
+    }
 
     var showSettlementSheet by remember { mutableStateOf(false) }
 
@@ -122,7 +121,7 @@ fun FriendDetailScreen(
                 val balance = requestUiState.balance.toBalanceState()
 
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Fixed Header
+                    // ... (rest of the UI)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -225,13 +224,15 @@ fun FriendDetailScreen(
                                     Text("Request", fontWeight = FontWeight.Bold)
                                 }
 
-                                OutlinedButton(
-                                    onClick = { showSettlementSheet = true },
-                                    modifier = Modifier.weight(1f).height(52.dp),
-                                    shape = MaterialTheme.shapes.medium,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                                ) {
-                                    Text("Settle Up", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                if (requestUiState.balance < -0.01) {
+                                    OutlinedButton(
+                                        onClick = { showSettlementSheet = true },
+                                        modifier = Modifier.weight(1f).height(52.dp),
+                                        shape = MaterialTheme.shapes.medium,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                    ) {
+                                        Text("Settle Up", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    }
                                 }
                             }
                         }
@@ -246,7 +247,7 @@ fun FriendDetailScreen(
                             )
                         }
 
-                        if (requestUiState.requests.isEmpty()) {
+                        if (requestUiState.activities.isEmpty()) {
                             item {
                                 Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                                     RecentActivityEmptyState()
@@ -254,17 +255,16 @@ fun FriendDetailScreen(
                             }
                         } else {
                             items(
-                                items = requestUiState.requests.sortedByDescending { it.createdAt }.take(5),
+                                items = requestUiState.activities.take(5),
                                 key = { it.id }
-                            ) { request ->
+                            ) { activity ->
                                 Box(modifier = Modifier.animateItem()) {
                                     Column {
                                         FriendRequestActivityCard(
-                                            title = if (request.creatorId == uiState.currentUserId) "You requested" 
-                                                    else "${friend.displayName} requested",
-                                            note = request.note,
-                                            amount = request.amount,
-                                            status = request.status
+                                            title = activity.title,
+                                            note = activity.note,
+                                            amount = activity.amount,
+                                            status = if (activity.type == "settlement") "paid" else activity.status
                                         )
                                         HorizontalDivider(
                                             modifier = Modifier.padding(horizontal = 20.dp),
@@ -315,7 +315,7 @@ fun FriendDetailScreen(
                     }
                 }
 
-                if (showSettlementSheet) {
+                if (showSettlementSheet && friendship != null && friend != null) {
                     SettlementBottomSheet(
                         balance = requestUiState.balance,
                         requestedByMe = requestUiState.requestedByMe,
@@ -324,8 +324,8 @@ fun FriendDetailScreen(
                         onDismiss = { showSettlementSheet = false },
                         onSettleNow = { amount ->
                             onSettlementClick(
+                                friendship.id,
                                 friend.id,
-                                friend.displayName,
                                 amount
                             )
                         }

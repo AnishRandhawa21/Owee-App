@@ -21,37 +21,41 @@ class GroupViewModel : ViewModel() {
     val uiState: StateFlow<GroupUiState> =
         _uiState.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
+
     init {
         loadGroups()
         observeGroupChanges()
     }
-    fun loadGroups() {
+    fun loadGroups(isSilent: Boolean = false) {
         viewModelScope.launch {
 
-            _uiState.value =
-                _uiState.value.copy(
+            if (!isSilent) {
+                _uiState.value = _uiState.value.copy(
                     isLoading = true,
                     error = null
                 )
+            }
 
             try {
+                val groups = groupRepository.getGroupsWithMetadata()
+                val currentUserId = groupRepository.getCurrentUserId()
 
-                val groups =
-                    groupRepository.getGroups()
-
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        groups = groups
-                    )
-
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    groups = groups,
+                    currentUserId = currentUserId
+                )
             } catch (e: Exception) {
-
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        error = e.message
-                    )
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message
+                )
             }
         }
     }
@@ -62,27 +66,41 @@ class GroupViewModel : ViewModel() {
         onSuccess: () -> Unit = {}
     ) {
         viewModelScope.launch {
-
-            val result =
-                groupRepository.createGroup(
-                    name = name,
-                    memberIds = memberIds
-                )
+            val result = groupRepository.createGroup(
+                name = name,
+                memberIds = memberIds
+            )
 
             result.onSuccess {
-
-                loadGroups()
-
+                loadGroups(isSilent = true) // Update list silently after creation
                 onSuccess()
             }
 
             result.onFailure {
-
-                _uiState.value =
-                    _uiState.value.copy(
-                        error = it.message
-                    )
+                _uiState.value = _uiState.value.copy(
+                    error = it.message
+                )
             }
+        }
+    }
+
+    fun deleteGroup(groupId: String) {
+        viewModelScope.launch {
+            // Optimistic UI: Remove the group instantly from the local state
+            val previousState = _uiState.value
+            _uiState.value = _uiState.value.copy(
+                groups = previousState.groups.filter { it.group.id != groupId }
+            )
+
+            val result = groupRepository.deleteGroup(groupId)
+            
+            result.onFailure {
+                // Rollback: If backend fails, put the group back and show error
+                _uiState.value = previousState.copy(
+                    error = "Could not delete group. Please try again."
+                )
+            }
+            // No need to call loadGroups() on success because we already updated the state!
         }
     }
 

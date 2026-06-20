@@ -125,6 +125,9 @@ fun MainNavGraph(
                     navController.navigate(
                         "${Route.CreateExpense.route}/$selectedGroupId"
                     )
+                },
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }

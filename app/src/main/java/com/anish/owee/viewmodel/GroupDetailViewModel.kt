@@ -39,6 +39,9 @@ class GroupDetailViewModel : ViewModel() {
 
             try {
 
+                val group =
+                    groupRepository.getGroup(groupId)
+
                 val members =
                     groupRepository.getGroupMembers(groupId)
 
@@ -105,6 +108,7 @@ class GroupDetailViewModel : ViewModel() {
                 _uiState.value =
                     _uiState.value.copy(
                         isLoading = false,
+                        group = group,
                         members = members,
                         expenses = expenses,
                         balances = balances,

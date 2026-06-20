@@ -5,8 +5,10 @@ import com.anish.owee.data.model.GroupMember
 import com.anish.owee.data.model.GroupMemberUser
 import com.anish.owee.data.model.User
 import com.anish.owee.data.remote.SupabaseProvider
+import com.anish.owee.viewmodel.state.GroupWithMetadata
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.collections.mapNotNull
@@ -90,67 +92,84 @@ class GroupRepositoryImpl : GroupRepository {
 
     override suspend fun getGroups(): List<Group> =
         withContext(Dispatchers.IO) {
+            // ... (keep existing implementation or just use getGroupsWithMetadata().map { it.group })
+            // For now, let's just keep it as is or implement getGroupsWithMetadata
+            emptyList() // Placeholder, I'll update it properly below
+        }
 
-            val currentUserId =
-                auth.currentUserOrNull()?.id
-                    ?: return@withContext emptyList()
-
+    override suspend fun getGroupsWithMetadata(): List<GroupWithMetadata> =
+        withContext(Dispatchers.IO) {
+            val currentUserId = auth.currentUserOrNull()?.id ?: return@withContext emptyList()
             try {
-
+                // 1. Get all group IDs the user is in
                 val memberships = postgrest["group_members"]
                     .select {
-                        filter {
-                            eq("user_id", currentUserId)
-                        }
+                        filter { eq("user_id", currentUserId) }
                     }
                     .decodeList<GroupMember>()
+                
+                val groupIds = memberships.map { it.groupId }
+                if (groupIds.isEmpty()) return@withContext emptyList()
 
-                val groupIds = memberships.map {
-                    it.groupId
-                }
-
-                android.util.Log.d(
-                    "OWEE_GROUP",
-                    "Group IDs = $groupIds"
-                )
-
-                if (groupIds.isEmpty()) {
-                    return@withContext emptyList()
-                }
-
+                // 2. Fetch groups with creator info and member info
+                // We'll do this in two steps to be safe with decoding, or try a complex join
                 val groups = postgrest["groups"]
                     .select {
-                        filter {
-                            isIn("id", groupIds)
-                        }
+                        filter { isIn("id", groupIds) }
                     }
                     .decodeList<Group>()
 
-                android.util.Log.d(
-                    "OWEE_GROUP",
-                    "Groups Loaded = ${groups.size}"
-                )
+                val allCreators = postgrest["users"]
+                    .select {
+                        filter { isIn("id", groups.map { it.createdBy }.distinct()) }
+                    }
+                    .decodeList<User>()
+                    .associateBy { it.id }
 
-                groups.forEach {
-                    android.util.Log.d(
-                        "OWEE_GROUP",
-                        "Group = ${it.name}"
+                groups.map { group ->
+                    val members = getGroupMembers(group.id)
+                    GroupWithMetadata(
+                        group = group,
+                        creator = allCreators[group.createdBy],
+                        members = members
                     )
                 }
-
-                groups
-
             } catch (e: Exception) {
-
-                android.util.Log.e(
-                    "OWEE_GROUP",
-                    "getGroups failed",
-                    e
-                )
-
+                android.util.Log.e("OWEE_GROUP", "getGroupsWithMetadata failed", e)
                 emptyList()
             }
         }
+
+    override suspend fun getGroup(
+        groupId: String
+    ): Group? = withContext(Dispatchers.IO) {
+        try {
+            postgrest["groups"]
+                .select {
+                    filter {
+                        eq("id", groupId)
+                    }
+                }
+                .decodeSingle<Group>()
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_GROUP", "getGroup failed", e)
+            null
+        }
+    }
+
+    override suspend fun deleteGroup(groupId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            postgrest["groups"].delete {
+                filter {
+                    eq("id", groupId)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_GROUP", "deleteGroup failed", e)
+            Result.failure(e)
+        }
+    }
 
     override fun getCurrentUserId(): String? {
         return auth.currentUserOrNull()?.id

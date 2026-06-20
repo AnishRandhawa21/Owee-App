@@ -1,106 +1,553 @@
 package com.anish.owee.ui.screen.group
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Group
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.anish.owee.data.model.User
 import com.anish.owee.viewmodel.GroupViewModel
+import com.anish.owee.viewmodel.state.GroupWithMetadata
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
+import androidx.compose.animation.*
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun GroupsScreen(
     onCreateGroupClick: () -> Unit = {},
     onGroupClick: (String) -> Unit = {}
 ) {
-
     val viewModel: GroupViewModel = viewModel()
-
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    android.util.Log.d(
-        "OWEE_UI",
-        "Groups on screen = ${uiState.groups.size}"
-    )
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val haptic = LocalHapticFeedback.current
 
-    when {
+    var groupToDelete by remember { mutableStateOf<GroupWithMetadata?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-        uiState.isLoading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+    val filteredGroups by remember(uiState.groups, searchQuery) {
+        derivedStateOf {
+            uiState.groups
+                .filter { it.group.name.contains(searchQuery, ignoreCase = true) }
+                .sortedByDescending { it.group.createdAt }
+        }
+    }
+
+    if (showDeleteDialog && groupToDelete != null) {
+        // ... existing dialog ...
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            shape = MaterialTheme.shapes.extraLarge,
+            title = { 
+                Text(
+                    "Delete Group", 
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                ) 
+            },
+            text = { 
+                Text(
+                    "Are you sure you want to delete '${groupToDelete?.group?.name}'? This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyLarge
+                ) 
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        groupToDelete?.let { viewModel.deleteGroup(it.group.id) }
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteDialog = false }
+                ) {
+                    Text(
+                        "Cancel", 
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Animated Status Bar Loading (Always shows when loading)
+        AnimatedVisibility(
+            visible = uiState.isLoading,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
+        ) {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().height(3.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = Color.Transparent
+            )
         }
 
-        uiState.groups.isEmpty() -> {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading,
+            onRefresh = { viewModel.loadGroups() },
+            modifier = Modifier.fillMaxSize(),
+            indicator = { } // Remove default spinner
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Fixed Header
+                Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "No groups yet",
-                    style = MaterialTheme.typography.titleMedium
+                    text = "Groups",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-1.5).sp,
+                        fontSize = 34.sp
+                    ),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
-                Button(
-                    onClick = onCreateGroupClick,
-                    modifier = Modifier.padding(top = 16.dp)
-                ) {
-                    Text("Create Group")
-                }
-            }
-        }
-
-        else -> {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-
-                items(uiState.groups) { group ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onGroupClick(group.id) }
-                            .padding(16.dp)
-                    ) {
+                // Fixed Search Bar
+                Spacer(modifier = Modifier.height(8.dp))
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChange(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    placeholder = {
                         Text(
-                            text = group.name,
-                            style = MaterialTheme.typography.bodyLarge
+                            text = "Search groups",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                    HorizontalDivider()
-                }
-                item {
-                    Button(
-                        onClick = onCreateGroupClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text("Create Group")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = "Clear search",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Scrollable List
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 120.dp)
+                ) {
+                    if (uiState.isLoading && uiState.groups.isEmpty()) {
+                        items(6) {
+                            GroupItemShimmer()
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                thickness = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    } else if (filteredGroups.isEmpty() && !uiState.isLoading) {
+                        item {
+                            EmptyGroupsState(isSearching = searchQuery.isNotEmpty())
+                        }
+                    } else {
+                        items(
+                            items = filteredGroups,
+                            key = { it.group.id } 
+                        ) { groupMetadata ->
+                            var showMenu by remember { mutableStateOf(false) }
+                            val isOwner = groupMetadata.group.createdBy == uiState.currentUserId
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem()
+                                    .combinedClickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = ripple(color = MaterialTheme.colorScheme.primary),
+                                        onClick = { onGroupClick(groupMetadata.group.id) },
+                                        onLongClick = {
+                                            if (isOwner) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                showMenu = true
+                                            }
+                                        }
+                                    )
+                            ) {
+                                Column {
+                                    GroupItemPremium(groupWithMetadata = groupMetadata)
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        thickness = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+
+                                // Menu aligned to the right side
+                                Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp)) {
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false },
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        shape = MaterialTheme.shapes.medium
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Delete Group", color = MaterialTheme.colorScheme.error) },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Delete,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            },
+                                            onClick = {
+                                                showMenu = false
+                                                groupToDelete = groupMetadata
+                                                showDeleteDialog = true
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // FAB - Modern Premium Shape
+        FloatingActionButton(
+            onClick = onCreateGroupClick,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp)
+                .size(64.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            shape = MaterialTheme.shapes.medium,
+            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 6.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(32.dp))
+        }
+    }
+}
+
+@Composable
+fun GroupItemShimmer() {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+
+    val shimmerColors = listOf(
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+    )
+
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = androidx.compose.ui.geometry.Offset.Zero,
+        end = androidx.compose.ui.geometry.Offset(x = translateAnim, y = translateAnim)
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(brush)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.fillMaxWidth(0.5f).height(20.dp).background(brush))
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth(0.3f).height(14.dp).background(brush))
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(modifier = Modifier.width(100.dp).height(24.dp).background(brush))
+            Box(modifier = Modifier.width(60.dp).height(24.dp).background(brush))
+        }
+    }
+}
+
+@Composable
+fun GroupItemPremium(groupWithMetadata: GroupWithMetadata) {
+    val group = groupWithMetadata.group
+    val creator = groupWithMetadata.creator
+    val members = groupWithMetadata.members
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Group Icon / Creator Avatar - Premium Squircle
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
+            ) {
+                if (creator?.photoUrl != null) {
+                    AsyncImage(
+                        model = creator.photoUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Group,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp).align(Alignment.Center),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        letterSpacing = (-0.5).sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Created by ${creator?.displayName ?: "Unknown"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Member Avatar Stack - Refined
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.height(32.dp)) {
+                    members.take(3).forEachIndexed { index, member ->
+                        Surface(
+                            modifier = Modifier
+                                .padding(start = (index * 20).dp)
+                                .size(32.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.background) // Match background for flat look
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                if (member.photoUrl != null) {
+                                    AsyncImage(
+                                        model = member.photoUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Text(
+                                        text = member.displayName.take(1).uppercase(),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp
+                                        ),
+                                        modifier = Modifier.align(Alignment.Center),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (members.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = if (members.size > 3) "+${members.size - 3} others" else "${members.size} members",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            // Active Badge - Refined with Theme Colors
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                shape = MaterialTheme.shapes.extraSmall
+            ) {
+                Text(
+                    text = "ACTIVE",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 0.5.sp
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyGroupsState(isSearching: Boolean = false) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 100.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                    shape = MaterialTheme.shapes.extraLarge
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Group,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(modifier = Modifier.height(28.dp))
+        Text(
+            text = if (isSearching) "No groups found" else "Ready to split?",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-1).sp
+            ),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = if (isSearching) "Try searching for something else." else "Create your first group to manage expenses with friends.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 48.dp)
+        )
     }
 }

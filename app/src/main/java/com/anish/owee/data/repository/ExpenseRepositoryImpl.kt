@@ -10,6 +10,8 @@ import com.anish.owee.data.model.CreateExpenseParticipantRequest
 import com.anish.owee.data.model.ExpenseParticipant
 import com.anish.owee.data.model.ExpenseParticipantUser
 
+import io.github.jan.supabase.postgrest.query.Order
+
 class ExpenseRepositoryImpl : ExpenseRepository {
 
     private val client = SupabaseProvider.client
@@ -79,6 +81,7 @@ class ExpenseRepositoryImpl : ExpenseRepository {
                     filter {
                         eq("group_id", groupId)
                     }
+                    order("created_at", Order.DESCENDING)
                 }
                 .decodeList<Expense>()
 

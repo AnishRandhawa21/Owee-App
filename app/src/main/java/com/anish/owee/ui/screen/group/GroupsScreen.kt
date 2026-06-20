@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,9 +58,24 @@ fun GroupsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
+    val listState = rememberLazyListState()
 
     var groupToDelete by remember { mutableStateOf<GroupWithMetadata?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Refresh data when the screen is shown (handles navigation back from CreateGroup)
+    LaunchedEffect(Unit) {
+        viewModel.loadGroups(isSilent = true)
+    }
+
+    // "On Focus" Improvement: Automatically scroll to top when a new group is added
+    LaunchedEffect(uiState.groups.size) {
+        if (uiState.groups.isNotEmpty() && listState.firstVisibleItemIndex > 0) {
+            // Small delay to let the item addition animation begin smoothly
+            kotlinx.coroutines.delay(200)
+            listState.animateScrollToItem(0)
+        }
+    }
 
     val filteredGroups by remember(uiState.groups, searchQuery) {
         derivedStateOf {
@@ -127,8 +143,8 @@ fun GroupsScreen(
         // Animated Status Bar Loading (Always shows when loading)
         AnimatedVisibility(
             visible = uiState.isLoading,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
+            enter = fadeIn(tween(400)) + expandVertically(tween(400)),
+            exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
             modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
         ) {
             LinearProgressIndicator(
@@ -207,7 +223,10 @@ fun GroupsScreen(
 
                 // Scrollable List
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     contentPadding = PaddingValues(bottom = 120.dp)
                 ) {
                     if (uiState.isLoading && uiState.groups.isEmpty()) {
@@ -234,7 +253,14 @@ fun GroupsScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .animateItem()
+                                    .animateItem(
+                                        fadeInSpec = tween(800, easing = FastOutSlowInEasing),
+                                        fadeOutSpec = tween(500),
+                                        placementSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessLow
+                                        )
+                                    )
                                     .combinedClickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = ripple(color = MaterialTheme.colorScheme.primary),

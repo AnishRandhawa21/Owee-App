@@ -9,6 +9,7 @@ import com.anish.owee.viewmodel.state.GroupWithMetadata
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.collections.mapNotNull
@@ -111,11 +112,11 @@ class GroupRepositoryImpl : GroupRepository {
                 val groupIds = memberships.map { it.groupId }
                 if (groupIds.isEmpty()) return@withContext emptyList()
 
-                // 2. Fetch groups with creator info and member info
-                // We'll do this in two steps to be safe with decoding, or try a complex join
+                // 2. Fetch groups ordered by newest first
                 val groups = postgrest["groups"]
                     .select {
                         filter { isIn("id", groupIds) }
+                        order("created_at", Order.DESCENDING)
                     }
                     .decodeList<Group>()
 

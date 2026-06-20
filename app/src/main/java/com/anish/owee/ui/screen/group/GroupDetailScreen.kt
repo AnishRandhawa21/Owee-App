@@ -1,26 +1,32 @@
 package com.anish.owee.ui.screen.group
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.TrendingDown
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -28,6 +34,7 @@ import com.anish.owee.data.model.Expense
 import com.anish.owee.data.model.GroupMemberBalance
 import com.anish.owee.ui.components.ExpenseDetailBottomSheet
 import com.anish.owee.ui.components.MemberBalanceBottomSheet
+import com.anish.owee.ui.screen.group.components.GroupMemberStack
 import com.anish.owee.viewmodel.GroupDetailViewModel
 import kotlin.math.abs
 
@@ -47,102 +54,182 @@ fun GroupDetailScreen(
         viewModel.loadGroupData(groupId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = uiState.group?.name ?: "Group Details",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { onAddExpenseClick(groupId) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Expense")
-            }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.surface)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Animated Status Bar Loading
+        AnimatedVisibility(
+            visible = uiState.isLoading,
+            enter = fadeIn(tween(400)) + expandVertically(tween(400)),
+            exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
+            modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
         ) {
-            if (uiState.isLoading && uiState.group == null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().height(3.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = Color.Transparent
+            )
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Fixed Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, start = 8.dp, end = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
                 }
-            } else {
+                Text(
+                    text = uiState.group?.name ?: "Group Details",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 22.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (uiState.members.isNotEmpty()) {
+                    GroupMemberStack(members = uiState.members)
+                }
+            }
+
+            PullToRefreshBox(
+                isRefreshing = uiState.isLoading,
+                onRefresh = { uiState.group?.id?.let { viewModel.loadGroupData(it) } },
+                modifier = Modifier.fillMaxSize(),
+                indicator = { } // Remove default spinner
+            ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    // Summary Section
-                    item {
-                        GroupSummarySection(uiState.balances)
-                    }
-
-                    // Balances Section
-                    item {
-                        SectionHeader("Group Balances")
-                    }
-
-                    if (uiState.balances.isEmpty()) {
+                    if (uiState.group != null) {
+                        // Summary Card
                         item {
-                            EmptyStateMessage("No balances yet. Everyone is settled up!")
+                            GroupSummaryPremium(uiState.balances)
                         }
-                    } else {
-                        items(uiState.balances) { balance ->
-                            val member = uiState.members.firstOrNull { it.id == balance.userId }
-                            BalanceItem(
-                                memberName = member?.displayName ?: "Unknown",
-                                photoUrl = member?.photoUrl,
-                                amount = balance.amount,
-                                onClick = { selectedBalanceUserId = balance.userId }
-                            )
-                        }
-                    }
 
-                    // Expenses Section
-                    item {
-                        SectionHeader("Recent Expenses")
-                    }
-
-                    if (uiState.expenses.isEmpty()) {
+                        // Balances Section
                         item {
-                            EmptyStateMessage("No expenses added yet.")
+                            SectionHeader("Group Balances")
                         }
-                    } else {
-                        items(uiState.expenses) { expense ->
-                            val payerName = uiState.members
-                                .firstOrNull { it.id == expense.payerId }
-                                ?.displayName ?: "Unknown"
 
-                            ExpenseItem(
-                                expense = expense,
-                                payerName = payerName,
-                                onClick = { selectedExpense = expense }
-                            )
+                        if (uiState.balances.isEmpty()) {
+                            item {
+                                EmptyStateMessage("No balances yet. Everyone is settled up!")
+                            }
+                        } else {
+                            items(
+                                items = uiState.balances,
+                                key = { "bal_${it.userId}" }
+                            ) { balance ->
+                                val member = uiState.members.firstOrNull { it.id == balance.userId }
+                                Box(modifier = Modifier.animateItem()) {
+                                    BalanceItemFlat(
+                                        memberName = member?.displayName ?: "Unknown",
+                                        photoUrl = member?.photoUrl,
+                                        amount = balance.amount,
+                                        onClick = { selectedBalanceUserId = balance.userId }
+                                    )
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        thickness = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Expenses Section
+                        item {
+                            SectionHeader("Recent Expenses")
+                        }
+
+                        if (uiState.expenses.isEmpty()) {
+                            item {
+                                EmptyStateMessage("No expenses added yet.")
+                            }
+                        } else {
+                            items(
+                                items = uiState.expenses,
+                                key = { it.id }
+                            ) { expense ->
+                                val payerName = uiState.members
+                                    .firstOrNull { it.id == expense.payerId }
+                                    ?.displayName ?: "Unknown"
+
+                                Box(modifier = Modifier.animateItem()) {
+                                    ExpenseItemFlat(
+                                        expense = expense,
+                                        payerName = payerName,
+                                        onClick = { selectedExpense = expense }
+                                    )
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        thickness = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Branding Footer
+                        item {
+                            Spacer(modifier = Modifier.height(32.dp))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 20.dp, bottom = 8.dp),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                Text(
+                                    text = "OWEE",
+                                    style = MaterialTheme.typography.displayLarge.copy(
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 2.sp,
+                                        fontSize = 64.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                                )
+                                Text(
+                                    text = "SPLIT SMART • LIVE BETTER",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 1.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                    modifier = Modifier.offset(y = (-10).dp)
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+
+        // FAB - Matching Groups Screen
+        FloatingActionButton(
+            onClick = { onAddExpenseClick(groupId) },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp)
+                .size(64.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            shape = MaterialTheme.shapes.medium,
+            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 6.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Expense", modifier = Modifier.size(32.dp))
         }
     }
 
@@ -173,145 +260,113 @@ fun GroupDetailScreen(
 }
 
 @Composable
-fun GroupSummarySection(balances: List<GroupMemberBalance>) {
+fun GroupSummaryPremium(balances: List<GroupMemberBalance>) {
     val totalOwed = balances.filter { it.amount > 0 }.sumOf { it.amount }
     val totalOwe = balances.filter { it.amount < 0 }.sumOf { abs(it.amount) }
+    val netBalance = totalOwed - totalOwe
 
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .padding(20.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+        border = null
     ) {
-        Box(
-            modifier = Modifier
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    )
-                )
-                .padding(24.dp)
-        ) {
+        Column(modifier = Modifier.padding(24.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.Groups,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
-                        text = "Total Balance",
-                        style = MaterialTheme.typography.labelLarge,
+                        text = "Net Balance",
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    val netBalance = totalOwed - totalOwe
                     Text(
                         text = "₹${"%.2f".format(netBalance)}",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (netBalance >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-1).sp
+                        ),
+                        color = if (netBalance >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
                 }
-                
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "You are owed: ₹${"%.2f".format(totalOwed)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF2E7D32),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "You owe: ₹${"%.2f".format(totalOwe)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFC62828),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SummaryIndicator(
+                    label = "You are owed",
+                    amount = totalOwed,
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.AutoMirrored.Rounded.TrendingUp,
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryIndicator(
+                    label = "You owe",
+                    amount = totalOwe,
+                    color = MaterialTheme.colorScheme.error,
+                    icon = Icons.AutoMirrored.Rounded.TrendingDown,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
 @Composable
-fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-        modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp),
-        color = MaterialTheme.colorScheme.primary
-    )
-}
-
-@Composable
-fun EmptyStateMessage(message: String) {
-    Text(
-        text = message,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(16.dp)
-    )
-}
-
-@Composable
-fun BalanceItem(memberName: String, photoUrl: String?, amount: Double, onClick: () -> Unit) {
+fun SummaryIndicator(
+    label: String,
+    amount: Double,
+    color: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        tonalElevation = 2.dp
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = Color.White.copy(alpha = 0.5f)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (photoUrl != null) {
-                AsyncImage(
-                    model = photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = memberName.take(1).uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = memberName,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                modifier = Modifier.weight(1f)
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(16.dp)
             )
-            Column(horizontalAlignment = Alignment.End) {
-                val text = when {
-                    amount > 0 -> "gets back"
-                    amount < 0 -> "owes"
-                    else -> "settled"
-                }
-                val color = when {
-                    amount > 0 -> Color(0xFF2E7D32)
-                    amount < 0 -> Color(0xFFC62828)
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-                Text(text = text, style = MaterialTheme.typography.labelSmall, color = color)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
                 Text(
-                    text = "₹${"%.2f".format(abs(amount))}",
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "₹${"%.2f".format(amount)}",
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     color = color
                 )
@@ -321,49 +376,137 @@ fun BalanceItem(memberName: String, photoUrl: String?, amount: Double, onClick: 
 }
 
 @Composable
-fun ExpenseItem(expense: Expense, payerName: String, onClick: () -> Unit) {
-    Surface(
+fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.5).sp
+        ),
+        modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
+fun EmptyStateMessage(message: String) {
+    Text(
+        text = message,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+    )
+}
+
+@Composable
+fun BalanceItemFlat(memberName: String, photoUrl: String?, amount: Double, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        tonalElevation = 1.dp
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ReceiptLong,
+            if (photoUrl != null) {
+                AsyncImage(
+                    model = photoUrl,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            } else {
                 Text(
-                    text = expense.title,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
-                )
-                Text(
-                    text = "Paid by $payerName",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = memberName.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.align(Alignment.Center),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "₹${"%.2f".format(expense.amount)}",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                text = memberName,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            val statusText = when {
+                amount > 0 -> "gets back"
+                amount < 0 -> "owes"
+                else -> "settled"
+            }
+            Text(
+                text = statusText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        val color = when {
+            amount > 0 -> MaterialTheme.colorScheme.primary
+            amount < 0 -> MaterialTheme.colorScheme.error
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+        
+        Text(
+            text = "₹${"%.2f".format(abs(amount))}",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+            color = color
+        )
+    }
+}
+
+@Composable
+fun ExpenseItemFlat(expense: Expense, payerName: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(MaterialTheme.shapes.small)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Rounded.ReceiptLong,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = expense.title,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Paid by $payerName",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        Text(
+            text = "₹${"%.2f".format(expense.amount)}",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }

@@ -24,6 +24,10 @@ interface FriendshipRepository {
 
     suspend fun getAcceptedFriendships(): List<Friendship>
 
+    suspend fun removeFriendship(
+        friendshipId: String
+    ): Result<Unit>
+
     suspend fun searchUsers(
         query: String
     ): List<SearchUser>

@@ -150,6 +150,46 @@ class FriendshipRepositoryImpl : FriendshipRepository {
         }
     }
 
+    override suspend fun removeFriendship(friendshipId: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                // 1. Fetch friendship details to get the IDs of the two users
+                val friendship = postgrest["friendships"]
+                    .select { filter { eq("id", friendshipId) } }
+                    .decodeSingleOrNull<Friendship>() 
+                    ?: return@withContext Result.failure(Exception("Friendship not found"))
+
+                val user1 = friendship.senderId
+                val user2 = friendship.receiverId
+
+                // 2. Delete the friendship record
+                postgrest["friendships"].delete {
+                    filter { eq("id", friendshipId) }
+                }
+
+                // 3. Delete all money requests between these two users (friend_requests table)
+                postgrest["friend_requests"].delete {
+                    filter {
+                        or {
+                            and {
+                                eq("creator_id", user1)
+                                eq("friend_id", user2)
+                            }
+                            and {
+                                eq("creator_id", user2)
+                                eq("friend_id", user1)
+                            }
+                        }
+                    }
+                }
+
+                Result.success(Unit)
+            } catch (e: Exception) {
+                android.util.Log.e("OWEE_FRIEND", "Cleanup failed", e)
+                Result.failure(e)
+            }
+        }
+
     override suspend fun getIncomingRequests(): List<Friendship> =
         withContext(Dispatchers.IO) {
 

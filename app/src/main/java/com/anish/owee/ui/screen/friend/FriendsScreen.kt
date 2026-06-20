@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PeopleOutline
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,13 +36,17 @@ import com.anish.owee.ui.screen.friend.components.SearchResultCard
 import com.anish.owee.ui.theme.TextSecondary
 import com.anish.owee.viewmodel.FriendshipViewModel
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.input.ImeAction
-
+import com.anish.owee.data.model.Friendship
 import com.anish.owee.ui.screen.friend.components.SearchResultStatus
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FriendsScreen(
     navController: NavHostController,
@@ -48,6 +54,65 @@ fun FriendsScreen(
 ) {
     val uiState by friendshipViewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val haptic = LocalHapticFeedback.current
+
+    var friendshipToRemove by remember { mutableStateOf<Friendship?>(null) }
+    var showRemoveDialog by remember { mutableStateOf(false) }
+
+    if (showRemoveDialog && friendshipToRemove != null) {
+        val friendName = if (friendshipToRemove?.senderId == uiState.currentUserId) {
+            friendshipToRemove?.receiver?.displayName
+        } else {
+            friendshipToRemove?.sender?.displayName
+        } ?: "this friend"
+
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            shape = MaterialTheme.shapes.extraLarge,
+            title = {
+                Text(
+                    "Remove Friend",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Text(
+                    "Are you sure you want to remove '$friendName'? You will no longer see each other's activity and cannot add them to new groups.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        friendshipToRemove?.let { friendshipViewModel.removeFriend(it.id) }
+                        showRemoveDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Remove", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showRemoveDialog = false }
+                ) {
+                    Text(
+                        "Cancel",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -157,7 +222,7 @@ fun FriendsScreen(
                                     uiState.outgoingRequests.any { it.receiverId == user.id } -> SearchResultStatus.Sent
                                     else -> SearchResultStatus.Add
                                 }
-                                
+
                                 SearchResultCard(
                                     displayName = user.displayName,
                                     username = user.username,
@@ -208,7 +273,7 @@ fun FriendsScreen(
                                 )
                             }
                         }
-                        
+
                         item { Spacer(modifier = Modifier.height(16.dp)) }
                     }
 
@@ -226,7 +291,7 @@ fun FriendsScreen(
                                 modifier = Modifier.padding(horizontal = 20.dp),
                                 thickness = 1.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                )
+                            )
                         }
                     } else if (uiState.friends.isEmpty()) {
                         item { FriendsEmptyState() }
@@ -242,26 +307,64 @@ fun FriendsScreen(
                             }
 
                             friend?.let {
-                                Box(modifier = Modifier.animateItem(
-                                    fadeInSpec = tween(800, easing = FastOutSlowInEasing),
-                                    fadeOutSpec = tween(500),
-                                    placementSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    )
-                                )) {
-                                    Column {
-                                        FriendCard(
-                                            friend = it,
+                                var showMenu by remember { mutableStateOf(false) }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateItem(
+                                            fadeInSpec = tween(800, easing = FastOutSlowInEasing),
+                                            fadeOutSpec = tween(500),
+                                            placementSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessLow
+                                            )
+                                        )
+                                        .combinedClickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = ripple(color = MaterialTheme.colorScheme.primary),
                                             onClick = {
                                                 navController.navigate("${Route.FriendDetail.route}/${it.id}")
+                                            },
+                                            onLongClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                showMenu = true
                                             }
                                         )
+                                ) {
+                                    Column {
+                                        FriendCard(friend = it)
                                         HorizontalDivider(
                                             modifier = Modifier.padding(horizontal = 20.dp),
                                             thickness = 1.dp,
                                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                         )
+                                    }
+
+                                    // Menu aligned to the right side
+                                    Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp)) {
+                                        DropdownMenu(
+                                            expanded = showMenu,
+                                            onDismissRequest = { showMenu = false },
+                                            containerColor = MaterialTheme.colorScheme.surface,
+                                            shape = MaterialTheme.shapes.medium
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Remove Friend", color = MaterialTheme.colorScheme.error) },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Delete,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.error
+                                                    )
+                                                },
+                                                onClick = {
+                                                    showMenu = false
+                                                    friendshipToRemove = friendship
+                                                    showRemoveDialog = true
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -360,7 +463,7 @@ private fun FriendsEmptyState() {
                 tint = MaterialTheme.colorScheme.primary
             )
         }
-        
+
         Text(
             text = "No friends yet",
             style = MaterialTheme.typography.headlineSmall.copy(
@@ -369,11 +472,11 @@ private fun FriendsEmptyState() {
             ),
             color = MaterialTheme.colorScheme.onSurface
         )
-        
+
         Text(
             text = "Search for a username above to add your first friend and start splitting.",
             style = MaterialTheme.typography.bodyLarge,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.padding(horizontal = 48.dp)
         )

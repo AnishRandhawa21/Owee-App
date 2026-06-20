@@ -156,4 +156,23 @@ class FriendshipViewModel : ViewModel() {
             loadData()
         }
     }
+
+    fun removeFriend(friendshipId: String) {
+        viewModelScope.launch {
+            // Optimistic UI: Remove the friend instantly from the local state
+            val previousState = _uiState.value
+            _uiState.value = _uiState.value.copy(
+                friends = previousState.friends.filter { it.id != friendshipId }
+            )
+
+            val result = friendshipRepository.removeFriendship(friendshipId)
+
+            result.onFailure {
+                // Rollback: If backend fails, put the friend back and show error
+                _uiState.value = previousState.copy(
+                    error = "Could not remove friend. Please try again."
+                )
+            }
+        }
+    }
 }

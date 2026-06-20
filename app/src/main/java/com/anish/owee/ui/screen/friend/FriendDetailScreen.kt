@@ -139,6 +139,9 @@ fun FriendDetailScreen(
                         friendName = friend.displayName,
                         onDismiss = {
                             showSettlementSheet = false
+                        },
+                        onSettleNow = {
+                            // TODO: Navigate to SettlementScreen
                         }
                     )
                 }

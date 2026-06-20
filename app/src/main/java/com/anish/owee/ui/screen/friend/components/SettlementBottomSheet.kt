@@ -25,7 +25,8 @@ fun SettlementBottomSheet(
     requestedByMe: Double,
     requestedByFriend: Double,
     friendName: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSettleNow: () -> Unit
 ) {
     val isOwedByFriend = balance > 0
     val isSettled = balance == 0.0
@@ -142,7 +143,13 @@ fun SettlementBottomSheet(
             Spacer(Modifier.height(32.dp))
 
             Button(
-                onClick = onDismiss,
+                onClick = {
+                    if (isSettled) {
+                        onDismiss()
+                    } else {
+                        onSettleNow()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -153,7 +160,7 @@ fun SettlementBottomSheet(
                 )
             ) {
                 Text(
-                    text = if (isSettled) "Close" else "Done",
+                    text = if (isSettled) "Close" else "Settle Now",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

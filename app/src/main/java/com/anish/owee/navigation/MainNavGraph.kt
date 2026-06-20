@@ -8,6 +8,9 @@ import androidx.navigation.compose.composable
 import com.anish.owee.ui.screen.friend.CreateFriendRequestScreen
 import com.anish.owee.ui.screen.friend.FriendDetailScreen
 import com.anish.owee.ui.screen.friend.FriendsScreen
+import com.anish.owee.ui.screen.group.CreateExpenseScreen
+import com.anish.owee.ui.screen.group.CreateGroupScreen
+import com.anish.owee.ui.screen.group.GroupDetailScreen
 import com.anish.owee.ui.screen.group.GroupsScreen
 import com.anish.owee.ui.screen.home.HomeScreen
 import com.anish.owee.ui.screen.profile.ProfileScreen
@@ -77,7 +80,60 @@ fun MainNavGraph(
         }
 
         composable(Route.Groups.route) {
-            GroupsScreen()
+            GroupsScreen(
+                onCreateGroupClick = {
+                    navController.navigate(
+                        Route.CreateGroup.route
+                    )
+                },
+                onGroupClick = { groupId ->
+                    navController.navigate(
+                        "${Route.GroupDetail.route}/$groupId"
+                    )
+                }
+            )
+        }
+
+        composable(
+            route = "${Route.CreateExpense.route}/{groupId}"
+        ) { backStackEntry ->
+
+            val groupId =
+                backStackEntry.arguments
+                    ?.getString("groupId")
+                    .orEmpty()
+
+            CreateExpenseScreen(
+                groupId = groupId,
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(
+            route = "${Route.GroupDetail.route}/{groupId}"
+        ) { backStackEntry ->
+
+            val groupId =
+                backStackEntry.arguments
+                    ?.getString("groupId")
+                    .orEmpty()
+
+            GroupDetailScreen(
+                groupId = groupId,
+                onAddExpenseClick = { selectedGroupId ->
+                    navController.navigate(
+                        "${Route.CreateExpense.route}/$selectedGroupId"
+                    )
+                }
+            )
+        }
+        composable(Route.CreateGroup.route) {
+            CreateGroupScreen(
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable(Route.Profile.route) {

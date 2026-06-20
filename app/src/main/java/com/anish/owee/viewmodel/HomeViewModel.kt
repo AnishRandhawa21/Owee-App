@@ -1,16 +1,19 @@
 package com.anish.owee.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.repository.*
 import com.anish.owee.domain.GroupBalanceCalculator
 import com.anish.owee.viewmodel.state.HomeUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val groupRepository: GroupRepository = GroupRepositoryImpl()
     private val expenseRepository: ExpenseRepository = ExpenseRepositoryImpl()
@@ -18,8 +21,38 @@ class HomeViewModel : ViewModel() {
     private val friendshipRepository: FriendshipRepository = FriendshipRepositoryImpl()
     private val friendRequestRepository: FriendRequestRepository = FriendRequestRepositoryImpl()
 
+    private val preferenceManager = PreferenceManager(application)
+
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    init {
+        loadCachedData()
+        loadHomeData()
+        observeChanges()
+    }
+
+    private fun loadCachedData() {
+        val (total, groups, friends) = preferenceManager.getHomeBalance()
+        _uiState.value = _uiState.value.copy(
+            totalBalance = total,
+            groupBalance = groups,
+            friendBalance = friends
+        )
+    }
+
+    private fun observeChanges() {
+        viewModelScope.launch {
+            merge(
+                groupRepository.groupChanges(),
+                friendshipRepository.friendshipChanges(),
+                friendRequestRepository.requestChanges(),
+                settlementRepository.settlementChanges()
+            ).collect {
+                loadHomeData()
+            }
+        }
+    }
 
     fun loadHomeData() {
         viewModelScope.launch {
@@ -84,6 +117,13 @@ class HomeViewModel : ViewModel() {
                     groupBalance = totalGroupBalance,
                     friendBalance = totalFriendBalance,
                     totalBalance = totalGroupBalance + totalFriendBalance
+                )
+
+                // Cache the new data
+                preferenceManager.saveHomeBalance(
+                    total = totalGroupBalance + totalFriendBalance,
+                    groups = totalGroupBalance,
+                    friends = totalFriendBalance
                 )
 
             } catch (e: Exception) {

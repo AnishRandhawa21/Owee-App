@@ -19,4 +19,6 @@ interface FriendRequestRepository {
     suspend fun markRequestPaid(
         requestId: String
     ): Result<Unit>
+
+    fun requestChanges(): kotlinx.coroutines.flow.Flow<Unit>
 }

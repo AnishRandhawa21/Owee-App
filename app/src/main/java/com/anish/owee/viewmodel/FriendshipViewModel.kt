@@ -1,7 +1,9 @@
 package com.anish.owee.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.repository.FriendshipRepository
 import com.anish.owee.data.repository.FriendshipRepositoryImpl
 import com.anish.owee.data.repository.UserSearchRepository
@@ -13,13 +15,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class FriendshipViewModel : ViewModel() {
+class FriendshipViewModel(application: Application) : AndroidViewModel(application) {
 
     private val friendshipRepository: FriendshipRepository =
         FriendshipRepositoryImpl()
 
     private val userSearchRepository: UserSearchRepository =
         UserSearchRepositoryImpl()
+
+    private val preferenceManager = PreferenceManager(application)
 
     private val _uiState =
         MutableStateFlow(FriendshipUiState())
@@ -28,8 +32,21 @@ class FriendshipViewModel : ViewModel() {
         _uiState.asStateFlow()
 
     init {
+        loadCachedFriends()
         loadData()
         observeFriendshipChanges()
+    }
+
+    private fun loadCachedFriends() {
+        val currentUserId = friendshipRepository.getCurrentUserId()
+        val cached = preferenceManager.getFriends()
+        if (cached.isNotEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                friends = cached,
+                currentUserId = currentUserId,
+                isLoading = false
+            )
+        }
     }
 
     private fun observeFriendshipChanges() {
@@ -50,11 +67,13 @@ class FriendshipViewModel : ViewModel() {
     fun loadData() {
         viewModelScope.launch {
 
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = true,
-                    error = null
-                )
+            if (_uiState.value.friends.isEmpty()) {
+                _uiState.value =
+                    _uiState.value.copy(
+                        isLoading = true,
+                        error = null
+                    )
+            }
 
             try {
 
@@ -75,6 +94,9 @@ class FriendshipViewModel : ViewModel() {
                         friends = friends,
                         currentUserId = friendshipRepository.getCurrentUserId()
                     )
+
+                // Save to cache
+                preferenceManager.saveFriends(friends)
 
             } catch (e: Exception) {
 

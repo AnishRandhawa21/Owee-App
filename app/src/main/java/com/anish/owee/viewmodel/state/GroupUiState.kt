@@ -2,6 +2,7 @@ package com.anish.owee.viewmodel.state
 
 import com.anish.owee.data.model.Group
 import com.anish.owee.data.model.User
+import kotlinx.serialization.Serializable
 
 data class GroupUiState(
     val groups: List<GroupWithMetadata> = emptyList(),
@@ -10,6 +11,7 @@ data class GroupUiState(
     val error: String? = null
 )
 
+@Serializable
 data class GroupWithMetadata(
     val group: Group,
     val creator: User? = null,

@@ -16,4 +16,6 @@ interface SettlementRepository {
         sourceType: String,
         sourceId: String?
     ): List<Settlement>
+
+    fun settlementChanges(): kotlinx.coroutines.flow.Flow<Unit>
 }

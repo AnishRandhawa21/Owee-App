@@ -1,7 +1,9 @@
 package com.anish.owee.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.repository.GroupRepository
 import com.anish.owee.data.repository.GroupRepositoryImpl
 import com.anish.owee.viewmodel.state.GroupUiState
@@ -10,10 +12,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
-class GroupViewModel : ViewModel() {
+
+class GroupViewModel(application: Application) : AndroidViewModel(application) {
 
     private val groupRepository: GroupRepository =
         GroupRepositoryImpl()
+
+    private val preferenceManager = PreferenceManager(application)
 
     private val _uiState =
         MutableStateFlow(GroupUiState())
@@ -29,13 +34,25 @@ class GroupViewModel : ViewModel() {
     }
 
     init {
+        loadCachedGroups()
         loadGroups()
         observeGroupChanges()
     }
+
+    private fun loadCachedGroups() {
+        val cached = preferenceManager.getGroups()
+        if (cached.isNotEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                groups = cached,
+                isLoading = false
+            )
+        }
+    }
+
     fun loadGroups(isSilent: Boolean = false) {
         viewModelScope.launch {
 
-            if (!isSilent) {
+            if (!isSilent && _uiState.value.groups.isEmpty()) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = true,
                     error = null
@@ -51,6 +68,9 @@ class GroupViewModel : ViewModel() {
                     groups = groups,
                     currentUserId = currentUserId
                 )
+
+                // Save to cache
+                preferenceManager.saveGroups(groups)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,

@@ -63,12 +63,16 @@ fun CreateGroupScreen(
             )
         }
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
             // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp, start = 8.dp, end = 20.dp),
+                    .padding(top = 8.dp, start = 8.dp, end = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
@@ -180,6 +184,7 @@ fun CreateGroupScreen(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding() // Fixed hiding behind nav bar
                 .padding(24.dp)
         ) {
             Button(

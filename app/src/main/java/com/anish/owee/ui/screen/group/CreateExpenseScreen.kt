@@ -96,7 +96,9 @@ fun CreateExpenseScreen(
 
         // Main content remains scrollable behind the FAB
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             contentPadding = PaddingValues(bottom = 160.dp) // Extra padding so content scrolls above FAB
         ) {
@@ -105,7 +107,7 @@ fun CreateExpenseScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp, start = 8.dp, end = 20.dp),
+                        .padding(top = 8.dp, start = 8.dp, end = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onBack) {
@@ -279,6 +281,7 @@ fun CreateExpenseScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .navigationBarsPadding() // Fixed hiding behind nav bar
                 .imePadding() // Only the button moves up with keyboard
                 .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {

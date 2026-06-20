@@ -109,5 +109,6 @@ dependencies {
     implementation("io.ktor:ktor-client-logging:3.0.0")
 
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("io.coil-kt:coil-gif:2.7.0")
 
 }

@@ -60,6 +60,10 @@ fun GroupDetailScreen(
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    LaunchedEffect(groupId) {
+        viewModel.loadCachedGroupData(groupId)
+    }
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -91,12 +95,16 @@ fun GroupDetailScreen(
             )
         }
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
             // Fixed Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp, start = 8.dp, end = 20.dp),
+                    .padding(top = 8.dp, start = 8.dp, end = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBackClick) {
@@ -240,7 +248,7 @@ fun GroupDetailScreen(
             onClick = { onAddExpenseClick(groupId) },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp)
+                .padding(end = 24.dp, bottom = 110.dp) // Adjusted for floating nav
                 .size(64.dp),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,

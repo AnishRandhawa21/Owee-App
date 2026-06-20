@@ -85,15 +85,16 @@ fun CreateFriendRequestScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 120.dp), // Space for hovering button
+                .padding(bottom = 140.dp), // Increased padding for bottom button
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp, start = 8.dp, end = 20.dp),
+                    .padding(top = 8.dp, start = 8.dp, end = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
@@ -230,6 +231,7 @@ fun CreateFriendRequestScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .navigationBarsPadding() // Fixed hiding behind nav bar
                 .imePadding() // Only the button moves up, keyboard background will be screen background
                 .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {

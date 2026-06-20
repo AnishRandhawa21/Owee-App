@@ -160,7 +160,11 @@ fun GroupsScreen(
             modifier = Modifier.fillMaxSize(),
             indicator = { } // Remove default spinner
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
                 // Fixed Header
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
@@ -319,7 +323,7 @@ fun GroupsScreen(
             onClick = onCreateGroupClick,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp)
+                .padding(end = 24.dp, bottom = 110.dp) // Adjusted for floating nav
                 .size(64.dp),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,

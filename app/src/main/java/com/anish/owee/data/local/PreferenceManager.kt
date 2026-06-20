@@ -3,6 +3,8 @@ package com.anish.owee.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import com.anish.owee.data.model.Friendship
+import com.anish.owee.viewmodel.state.FriendRequestUiState
+import com.anish.owee.viewmodel.state.GroupDetailUiState
 import com.anish.owee.viewmodel.state.GroupWithMetadata
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -60,5 +62,41 @@ class PreferenceManager(context: Context) {
         } catch (e: Exception) {
             emptyList()
         }
+    }
+
+    fun saveGroupDetail(groupId: String, detail: GroupDetailUiState) {
+        prefs.edit().apply {
+            putString("cached_group_detail_$groupId", json.encodeToString(detail))
+            apply()
+        }
+    }
+
+    fun getGroupDetail(groupId: String): GroupDetailUiState? {
+        val detailJson = prefs.getString("cached_group_detail_$groupId", null) ?: return null
+        return try {
+            json.decodeFromString(detailJson)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun saveFriendDetail(friendId: String, detail: FriendRequestUiState) {
+        prefs.edit().apply {
+            putString("cached_friend_detail_$friendId", json.encodeToString(detail))
+            apply()
+        }
+    }
+
+    fun getFriendDetail(friendId: String): FriendRequestUiState? {
+        val detailJson = prefs.getString("cached_friend_detail_$friendId", null) ?: return null
+        return try {
+            json.decodeFromString(detailJson)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun clearAll() {
+        prefs.edit().clear().apply()
     }
 }

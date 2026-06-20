@@ -1,6 +1,9 @@
 package com.anish.owee.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.repository.FriendRequestRepository
 import com.anish.owee.data.repository.FriendRequestRepositoryImpl
 import com.anish.owee.data.repository.FriendshipRepository
@@ -12,10 +15,9 @@ import com.anish.owee.viewmodel.state.FriendRequestUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
-class FriendRequestViewModel : ViewModel() {
+class FriendRequestViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: FriendRequestRepository =
         FriendRequestRepositoryImpl()
@@ -26,11 +28,20 @@ class FriendRequestViewModel : ViewModel() {
     private val settlementRepository: SettlementRepository =
         SettlementRepositoryImpl()
 
+    private val preferenceManager = PreferenceManager(application)
+
     private val _uiState =
         MutableStateFlow(FriendRequestUiState())
 
     val uiState: StateFlow<FriendRequestUiState> =
         _uiState.asStateFlow()
+
+    fun loadCachedFriendData(friendId: String) {
+        val cached = preferenceManager.getFriendDetail(friendId)
+        if (cached != null) {
+            _uiState.value = cached.copy(isLoading = false)
+        }
+    }
 
     fun loadRequests(
         friendId: String
@@ -38,11 +49,13 @@ class FriendRequestViewModel : ViewModel() {
 
         viewModelScope.launch {
 
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = true,
-                    error = null
-                )
+            if (_uiState.value.requests.isEmpty() && _uiState.value.settlements.isEmpty()) {
+                _uiState.value =
+                    _uiState.value.copy(
+                        isLoading = true,
+                        error = null
+                    )
+            }
 
             try {
                 val currentUserId =
@@ -147,6 +160,9 @@ class FriendRequestViewModel : ViewModel() {
                         requestedByMe = totalRequestedByMe,
                         requestedByFriend = totalRequestedByFriend
                     )
+
+                // Save to cache
+                preferenceManager.saveFriendDetail(friendId, _uiState.value)
 
                 android.util.Log.d(
                     "OWEE_FRIEND_BALANCE",

@@ -57,6 +57,10 @@ fun FriendDetailScreen(
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    LaunchedEffect(friendId) {
+        friendRequestViewModel.loadCachedFriendData(friendId)
+    }
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -120,12 +124,16 @@ fun FriendDetailScreen(
                 val firstName = friend.displayName.trim().split(" ").firstOrNull() ?: friend.displayName
                 val balance = requestUiState.balance.toBalanceState()
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // ... (rest of the UI)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                ) {
+                    // Fixed Header
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp, start = 8.dp, end = 20.dp),
+                            .padding(top = 8.dp, start = 8.dp, end = 20.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = onBackClick) {

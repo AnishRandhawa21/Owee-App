@@ -1,33 +1,13 @@
 package com.anish.owee.ui.screen.auth
 
-import androidx.compose.animation.core.EaseInOutSine
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -37,16 +17,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anish.owee.R
-import com.anish.owee.ui.theme.Background
-import com.anish.owee.ui.theme.OnPrimary
-import com.anish.owee.ui.theme.Outline
-import com.anish.owee.ui.theme.Primary
-import com.anish.owee.ui.theme.TextPrimary
-import com.anish.owee.ui.theme.TextSecondary
+import com.anish.owee.data.model.SessionState
+import com.anish.owee.ui.theme.*
 import com.anish.owee.utils.GoogleAuthManager
 import com.anish.owee.viewmodel.SessionViewModel
 import kotlinx.coroutines.launch
@@ -58,6 +35,7 @@ fun LoginScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val googleAuthManager = remember { GoogleAuthManager(context) }
+    val sessionState by sessionViewModel.sessionState.collectAsState()
 
     val infiniteTransition = rememberInfiniteTransition(label = "bg_anim")
     val blobProgress by infiniteTransition.animateFloat(
@@ -79,143 +57,142 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 28.dp),
+                .padding(horizontal = 32.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
 
             // ── Branding ──────────────────────────────────────────────────
-            Column(modifier = Modifier.padding(top = 72.dp)) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = Primary,
-                    modifier = Modifier.size(52.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "O",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = OnPrimary,
-                            fontSize = 26.sp
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(28.dp))
-
+            Column(modifier = Modifier.padding(top = 100.dp)) {
                 Text(
-                    text = "Split bills,\nnot friendships.",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = TextPrimary,
-                    lineHeight = 40.sp
+                    text = "OWEE",
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 4.sp,
+                        fontSize = 42.sp
+                    ),
+                    color = Primary
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(48.dp))
 
                 Text(
-                    text = "Track shared expenses with anyone,\nsettle up in seconds.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Split smart.\nLive better.",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        lineHeight = 44.sp,
+                        letterSpacing = (-1.5).sp
+                    ),
+                    color = TextPrimary
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = "The simplest way to track shared expenses and settle up instantly.",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = TextSecondary,
-                    lineHeight = 22.sp
+                    lineHeight = 26.sp
                 )
             }
 
             // ── Sign-in CTA ───────────────────────────────────────────────
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(bottom = 52.dp)
+                modifier = Modifier.padding(bottom = 64.dp)
             ) {
                 GoogleSignInButton(
+                    isLoading = sessionState is SessionState.Loading,
                     onClick = {
                         coroutineScope.launch {
                             googleAuthManager.signIn().fold(
                                 onSuccess = { idToken ->
                                     sessionViewModel.signInWithGoogle(idToken)
                                 },
-                                onFailure = {
-                                    // Error handling could be added here (e.g., Snackbar)
-                                }
+                                onFailure = { }
                             )
                         }
                     }
                 )
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(24.dp))
 
                 Text(
-                    text = "By continuing, you agree to our Terms of Service\nand Privacy Policy.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 18.sp
+                    text = "By continuing, you agree to our Terms and Privacy Policy.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
                 )
             }
         }
     }
 }
 
-// ── Google button ─────────────────────────────────────────────────────────────
-
 @Composable
-private fun GoogleSignInButton(onClick: () -> Unit) {
+private fun GoogleSignInButton(
+    isLoading: Boolean,
+    onClick: () -> Unit
+) {
     Surface(
-        onClick = onClick,
+        onClick = if (!isLoading) onClick else ({ }),
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp),
+            .height(60.dp),
         shape = MaterialTheme.shapes.medium,
-        color = androidx.compose.ui.graphics.Color.White,
-        shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, Outline)
+        color = SurfaceVariant, // Flat grey background
+        shadowElevation = 0.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_google),
-                contentDescription = "Google",
-                modifier = Modifier.size(20.dp),
-                tint = Color.Unspecified
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "Continue with Google",
-                style = MaterialTheme.typography.labelLarge,
-                color = TextPrimary,
-                fontSize = 15.sp
-            )
+        Box(contentAlignment = Alignment.Center) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Primary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_google),
+                        contentDescription = "Google",
+                        modifier = Modifier.size(22.dp),
+                        tint = Color.Unspecified
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Text(
+                        text = "Get Started with Google",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary
+                    )
+                }
+            }
         }
     }
 }
 
-// ── Background blobs ──────────────────────────────────────────────────────────
-
 private fun DrawScope.drawAmbientBlobs(progress: Float) {
-    // Top-right blue blob drifts slowly
-    val cx = size.width * 0.78f + progress * 40.dp.toPx()
-    val cy = size.height * 0.16f - progress * 30.dp.toPx()
+    val cx = size.width * 0.85f + progress * 30.dp.toPx()
+    val cy = size.height * 0.15f - progress * 20.dp.toPx()
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(Color(0xFF0055FF).copy(alpha = 0.08f), Color.Transparent),
+            colors = listOf(Primary.copy(alpha = 0.12f), Color.Transparent),
             center = Offset(cx, cy),
-            radius = 260.dp.toPx()
+            radius = 300.dp.toPx()
         ),
-        radius = 260.dp.toPx(),
+        radius = 300.dp.toPx(),
         center = Offset(cx, cy)
     )
-    // Bottom-left green blob is static
-    val bx = size.width * 0.12f
-    val by = size.height * 0.65f
+    val bx = size.width * 0.1f
+    val by = size.height * 0.75f
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(Color(0xFF4F6354).copy(alpha = 0.06f), Color.Transparent),
+            colors = listOf(Success.copy(alpha = 0.08f), Color.Transparent),
             center = Offset(bx, by),
-            radius = 200.dp.toPx()
+            radius = 240.dp.toPx()
         ),
-        radius = 200.dp.toPx(),
+        radius = 240.dp.toPx(),
         center = Offset(bx, by)
     )
 }

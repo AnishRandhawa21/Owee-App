@@ -139,7 +139,11 @@ fun FriendsScreen(
             modifier = Modifier.fillMaxSize(),
             indicator = { } // Remove default spinner
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
                 // Fixed Header
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(

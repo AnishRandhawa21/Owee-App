@@ -70,24 +70,23 @@ fun HomeScreen(
             )
         }
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Dashboard",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 24.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            // Fixed Header
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Dashboard",
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-1.5).sp,
+                    fontSize = 34.sp
+                ),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onBackground
+            )
 
             PullToRefreshBox(
                 isRefreshing = uiState.isLoading,

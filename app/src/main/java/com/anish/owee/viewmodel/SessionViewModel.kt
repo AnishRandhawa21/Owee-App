@@ -1,8 +1,10 @@
 package com.anish.owee.viewmodel
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.model.SessionState
 import com.anish.owee.data.repository.AuthRepository
 import com.anish.owee.data.repository.AuthRepositoryImpl
@@ -11,9 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class SessionViewModel : ViewModel() {
+class SessionViewModel(application: Application) : AndroidViewModel(application) {
 
     private val authRepository: AuthRepository = AuthRepositoryImpl()
+    private val preferenceManager = PreferenceManager(application)
     private val TAG = "OWEE_AUTH"
 
     private val _sessionState = MutableStateFlow<SessionState>(SessionState.Loading)
@@ -67,6 +70,7 @@ class SessionViewModel : ViewModel() {
         viewModelScope.launch {
             Log.d(TAG, "logout() called")
             authRepository.signOut()
+            preferenceManager.clearAll()
             _sessionState.value = SessionState.Unauthenticated
         }
     }

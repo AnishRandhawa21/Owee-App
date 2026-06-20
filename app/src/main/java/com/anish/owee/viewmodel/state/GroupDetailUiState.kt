@@ -1,12 +1,10 @@
 package com.anish.owee.viewmodel.state
 
-import com.anish.owee.data.model.Expense
-import com.anish.owee.data.model.Group
-import com.anish.owee.data.model.GroupMemberBalance
-import com.anish.owee.data.model.User
-import com.anish.owee.data.model.ExpenseParticipant
-import com.anish.owee.data.model.Settlement
+import com.anish.owee.data.model.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
+@Serializable
 data class GroupDetailUiState(
 
     val group: Group? = null,
@@ -19,10 +17,11 @@ data class GroupDetailUiState(
 
     val balances: List<GroupMemberBalance> = emptyList(),
 
-    val participantsByExpense:
-    Map<String, List<ExpenseParticipant>> = emptyMap(),
+    val participantsByExpense: Map<String, List<ExpenseParticipant>> = emptyMap(),
 
+    @Transient
     val isLoading: Boolean = false,
 
+    @Transient
     val error: String? = null
 )

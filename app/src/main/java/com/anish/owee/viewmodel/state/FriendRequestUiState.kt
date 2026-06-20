@@ -2,7 +2,10 @@ package com.anish.owee.viewmodel.state
 
 import com.anish.owee.data.model.FriendRequest
 import com.anish.owee.data.model.Settlement
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
+@Serializable
 data class FriendActivity(
     val id: String,
     val title: String,
@@ -13,8 +16,10 @@ data class FriendActivity(
     val type: String // "request" or "settlement"
 )
 
+@Serializable
 data class FriendRequestUiState(
 
+    @Transient
     val isLoading: Boolean = false,
 
     val requests: List<FriendRequest> = emptyList(),
@@ -29,5 +34,6 @@ data class FriendRequestUiState(
 
     val requestedByFriend: Double = 0.0,
 
+    @Transient
     val error: String? = null
 )

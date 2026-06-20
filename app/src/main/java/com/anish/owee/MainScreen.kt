@@ -1,5 +1,7 @@
 package com.anish.owee
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -46,10 +48,14 @@ fun MainScreen(
             }
         }
     ) { paddingValues ->
-        MainNavGraph(
-            navController = navController,
-            sessionViewModel = sessionViewModel,
-            modifier = Modifier.padding(paddingValues)
-        )
+        // To achieve the "Floating" effect where content flows behind the bar,
+        // we don't apply the bottom padding from the scaffold to the MainNavGraph.
+        Box(modifier = Modifier.fillMaxSize()) {
+            MainNavGraph(
+                navController = navController,
+                sessionViewModel = sessionViewModel,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }

@@ -57,11 +57,11 @@ fun ProfileScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
+                .statusBarsPadding()
         ) {
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Large Flat Title
+            // Fixed Flat Title
             Text(
                 text = "Profile",
                 style = MaterialTheme.typography.displaySmall.copy(
@@ -73,167 +73,174 @@ fun ProfileScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            // Flat Profile Header
+            // Scrollable Content
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    if (uiState.user?.photoUrl != null) {
-                        AsyncImage(
-                            model = uiState.user?.photoUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = uiState.user?.displayName?.take(1)?.uppercase() ?: "?",
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.align(Alignment.Center),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = uiState.user?.displayName ?: "Loading...",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "@${uiState.user?.username.orEmpty()}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-            }
-
-            // Flat Menu Items
-            Column(modifier = Modifier.fillMaxWidth()) {
-                ProfileSectionHeader("ACCOUNT")
-                
-                ProfileRow(
-                    icon = Icons.Rounded.Email,
-                    label = "Email",
-                    value = uiState.user?.email.orEmpty()
-                )
-                
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                )
-
-                ProfileSectionHeader("PAYMENT SETTINGS")
-                
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                    OutlinedTextField(
-                        value = uiState.upiId,
-                        onValueChange = { profileViewModel.updateUpiId(it) },
-                        label = { Text("Your UPI ID") },
-                        placeholder = { Text("username@upi") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                            unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant
-                        )
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    Button(
-                        onClick = { profileViewModel.saveUpiId() },
-                        enabled = !uiState.isSaving && uiState.upiId != (uiState.user?.upiId ?: ""),
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = MaterialTheme.shapes.medium,
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                    ) {
-                        Text(if (uiState.isSaving) "Saving..." else "Update UPI ID", fontWeight = FontWeight.Bold)
-                    }
-                    
-                    if (uiState.saveSuccess) {
-                        Text(
-                            text = "Saved successfully!",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Success,
-                            modifier = Modifier.padding(top = 4.dp).align(Alignment.CenterHorizontally)
-                        )
-                    }
-                }
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Logout Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.05f))
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.Logout,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Logout from Owee",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = { sessionViewModel.logout() }) {
-                        Text("CONFIRM", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Black)
-                    }
-                }
-
-                // Branding Footer (Flat)
-                Spacer(modifier = Modifier.height(64.dp))
+                // Flat Profile Header
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 24.dp, bottom = 40.dp),
-                    horizontalAlignment = Alignment.Start
+                        .padding(vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        if (uiState.user?.photoUrl != null) {
+                            AsyncImage(
+                                model = uiState.user?.photoUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                text = uiState.user?.displayName?.take(1)?.uppercase() ?: "?",
+                                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.align(Alignment.Center),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
                     Text(
-                        text = "OWEE",
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 2.sp,
-                            fontSize = 64.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                        text = uiState.user?.displayName ?: "Loading...",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "SPLIT SMART • LIVE BETTER",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                        modifier = Modifier.offset(y = (-10).dp)
+                        text = "@${uiState.user?.username.orEmpty()}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
                     )
+                }
+
+                // Flat Menu Items
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    ProfileSectionHeader("ACCOUNT")
+                    
+                    ProfileRow(
+                        icon = Icons.Rounded.Email,
+                        label = "Email",
+                        value = uiState.user?.email.orEmpty()
+                    )
+                    
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    ProfileSectionHeader("PAYMENT SETTINGS")
+                    
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+                        OutlinedTextField(
+                            value = uiState.upiId,
+                            onValueChange = { profileViewModel.updateUpiId(it) },
+                            label = { Text("Your UPI ID") },
+                            placeholder = { Text("username@upi") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                                unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant
+                            )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Button(
+                            onClick = { profileViewModel.saveUpiId() },
+                            enabled = !uiState.isSaving && uiState.upiId != (uiState.user?.upiId ?: ""),
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = MaterialTheme.shapes.medium,
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                        ) {
+                            Text(if (uiState.isSaving) "Saving..." else "Update UPI ID", fontWeight = FontWeight.Bold)
+                        }
+                        
+                        if (uiState.saveSuccess) {
+                            Text(
+                                text = "Saved successfully!",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Success,
+                                modifier = Modifier.padding(top = 4.dp).align(Alignment.CenterHorizontally)
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Logout Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.05f))
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.Logout,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Logout from Owee",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { sessionViewModel.logout() }) {
+                            Text("CONFIRM", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Black)
+                        }
+                    }
+
+                    // Branding Footer (Flat)
+                    Spacer(modifier = Modifier.height(64.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, bottom = 120.dp), // Extra padding for floating nav
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            text = "OWEE",
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 2.sp,
+                                fontSize = 64.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                        )
+                        Text(
+                            text = "SPLIT SMART • LIVE BETTER",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                            modifier = Modifier.offset(y = (-10).dp)
+                        )
+                    }
                 }
             }
         }

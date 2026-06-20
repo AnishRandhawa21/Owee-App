@@ -1,7 +1,9 @@
 package com.anish.owee.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.repository.ExpenseRepository
 import com.anish.owee.data.repository.ExpenseRepositoryImpl
 import com.anish.owee.data.repository.GroupRepository
@@ -15,7 +17,7 @@ import kotlinx.coroutines.launch
 import com.anish.owee.data.repository.SettlementRepository
 import com.anish.owee.data.repository.SettlementRepositoryImpl
 
-class GroupDetailViewModel : ViewModel() {
+class GroupDetailViewModel(application: Application) : AndroidViewModel(application) {
 
     private val groupRepository: GroupRepository =
         GroupRepositoryImpl()
@@ -25,21 +27,33 @@ class GroupDetailViewModel : ViewModel() {
 
     private val settlementRepository: SettlementRepository =
         SettlementRepositoryImpl()
+
+    private val preferenceManager = PreferenceManager(application)
+
     private val _uiState =
         MutableStateFlow(GroupDetailUiState())
 
     val uiState: StateFlow<GroupDetailUiState> =
         _uiState.asStateFlow()
 
+    fun loadCachedGroupData(groupId: String) {
+        val cached = preferenceManager.getGroupDetail(groupId)
+        if (cached != null) {
+            _uiState.value = cached.copy(isLoading = false)
+        }
+    }
+
     fun loadGroupData(groupId: String) {
 
         viewModelScope.launch {
 
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = true,
-                    error = null
-                )
+            if (_uiState.value.group == null) {
+                _uiState.value =
+                    _uiState.value.copy(
+                        isLoading = true,
+                        error = null
+                    )
+            }
 
             try {
 
@@ -127,6 +141,9 @@ class GroupDetailViewModel : ViewModel() {
                         participantsByExpense =
                             participantsByExpense
                     )
+
+                // Save to cache
+                preferenceManager.saveGroupDetail(groupId, _uiState.value)
 
             } catch (e: Exception) {
 

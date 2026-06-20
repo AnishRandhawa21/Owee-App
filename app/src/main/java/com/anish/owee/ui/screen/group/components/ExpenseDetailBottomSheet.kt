@@ -25,13 +25,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.anish.owee.data.model.Expense
+import com.anish.owee.data.model.GroupMemberBalance
 import com.anish.owee.viewmodel.ExpenseDetailViewModel
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseDetailBottomSheet(
     expense: Expense,
     payerName: String,
+    currentUserId: String,
+    balances: List<GroupMemberBalance>,
     onDismiss: () -> Unit,
     viewModel: ExpenseDetailViewModel = viewModel()
 ) {
@@ -68,7 +72,7 @@ fun ExpenseDetailBottomSheet(
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = expense.title,
                         style = MaterialTheme.typography.titleLarge.copy(
@@ -82,9 +86,24 @@ fun ExpenseDetailBottomSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+                // Overall Status for the current user
+                val isPayer = expense.payerId == currentUserId
+                if (isPayer) {
+                    // Check if anyone still owes the current user in this group
+                    val anyoneOwes = balances.any { it.amount > 0.01 }
+                    StatusBadge(isPaid = !anyoneOwes)
+                } else {
+                    // Check if current user still owes the payer
+                    val balanceWithPayer = balances.find { it.userId == expense.payerId }?.amount ?: 0.0
+                    // If balanceWithPayer < -0.01, it means current user owes the payer
+                    StatusBadge(isPaid = balanceWithPayer >= -0.01)
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+            
+            // ... rest of the content
 
             // Amount Card
             Surface(
@@ -170,6 +189,19 @@ fun ExpenseDetailBottomSheet(
                                 modifier = Modifier.weight(1f)
                             )
 
+                            // Status for individual participant
+                            val isPayer = expense.payerId == currentUserId
+                            val pUserId = participant.user?.id
+                            if (isPayer && pUserId != null && pUserId != currentUserId) {
+                                val pBalance = balances.find { it.userId == pUserId }?.amount ?: 0.0
+                                StatusBadge(isPaid = pBalance <= 0.01)
+                                Spacer(modifier = Modifier.width(12.dp))
+                            } else if (!isPayer && pUserId == currentUserId) {
+                                val balanceWithPayer = balances.find { it.userId == expense.payerId }?.amount ?: 0.0
+                                StatusBadge(isPaid = balanceWithPayer >= -0.01)
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
+
                             Text(
                                 text = "₹${"%.2f".format(participant.shareAmount)}",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
@@ -193,5 +225,23 @@ fun ExpenseDetailBottomSheet(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
+    }
+}
+
+@Composable
+fun StatusBadge(isPaid: Boolean) {
+    Surface(
+        color = if (isPaid) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color(0xFFFF9800).copy(alpha = 0.1f),
+        shape = CircleShape,
+    ) {
+        Text(
+            text = if (isPaid) "PAID" else "UNPAID",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 10.sp
+            ),
+            color = if (isPaid) Color(0xFF2E7D32) else Color(0xFFEF6C00),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
     }
 }

@@ -122,6 +122,7 @@ class GroupDetailViewModel : ViewModel() {
                         group = group,
                         members = members,
                         expenses = expenses,
+                        settlements = settlements,
                         balances = balances,
                         participantsByExpense =
                             participantsByExpense

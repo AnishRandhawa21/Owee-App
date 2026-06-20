@@ -6,5 +6,7 @@ data class MemberTransaction(
 
     val title: String,
 
-    val amount: Double
+    val amount: Double,
+
+    val createdAt: String
 )

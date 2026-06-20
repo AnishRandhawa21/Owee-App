@@ -37,6 +37,9 @@ import com.anish.owee.ui.components.MemberBalanceBottomSheet
 import com.anish.owee.ui.screen.group.components.GroupMemberStack
 import com.anish.owee.viewmodel.GroupDetailViewModel
 import kotlin.math.abs
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,8 +58,18 @@ fun GroupDetailScreen(
     var selectedExpense by remember { mutableStateOf<Expense?>(null) }
     var selectedBalanceUserId by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(groupId) {
-        viewModel.loadGroupData(groupId)
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadGroupData(groupId)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     Box(
@@ -241,9 +254,12 @@ fun GroupDetailScreen(
     // Bottom Sheets
     selectedExpense?.let { expense ->
         val payerName = uiState.members.firstOrNull { it.id == expense.payerId }?.displayName ?: "Unknown"
+        val currentUserId = viewModel.getCurrentUserId() ?: ""
         ExpenseDetailBottomSheet(
             expense = expense,
             payerName = payerName,
+            currentUserId = currentUserId,
+            balances = uiState.balances,
             onDismiss = { selectedExpense = null }
         )
     }
@@ -258,6 +274,7 @@ fun GroupDetailScreen(
                 currentUserId = currentUserId,
                 expenses = uiState.expenses,
                 participantsByExpense = uiState.participantsByExpense,
+                settlements = uiState.settlements,
                 onDismiss = { selectedBalanceUserId = null },
                 onSettleClick = { memberId, amount ->
 

@@ -184,7 +184,9 @@ fun MainNavGraph(
                 sourceId = sourceId,
                 userId = userId,
                 amount = amount,
-
+                onSettlementSuccess = {
+                    navController.popBackStack()
+                }
             )
         }
 

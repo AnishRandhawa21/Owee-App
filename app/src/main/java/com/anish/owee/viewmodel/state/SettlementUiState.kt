@@ -20,5 +20,7 @@ data class SettlementUiState(
 
     val error: String? = null,
 
-    val showConfirmationDialog: Boolean = false
+    val showConfirmationDialog: Boolean = false,
+
+    val settlementSuccess: Boolean = false
 )

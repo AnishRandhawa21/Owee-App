@@ -38,6 +38,9 @@ import com.anish.owee.data.model.FriendRequest
 import com.anish.owee.ui.screen.friend.components.FriendRequestActivityCard
 import com.anish.owee.ui.screen.friend.components.SettlementBottomSheet
 import com.anish.owee.viewmodel.state.toBalanceState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +55,20 @@ fun FriendDetailScreen(
     val uiState by friendshipViewModel.uiState.collectAsStateWithLifecycle()
     val requestUiState by friendRequestViewModel.uiState.collectAsStateWithLifecycle()
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                friendRequestViewModel.loadRequests(friendId)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val friend: User? = uiState.friends
         .firstNotNullOfOrNull { friendship ->
             when {
@@ -62,10 +79,6 @@ fun FriendDetailScreen(
         }
 
     var showSettlementSheet by remember { mutableStateOf(false) }
-
-    LaunchedEffect(friendId) {
-        friendRequestViewModel.loadRequests(friendId)
-    }
 
     Box(
         modifier = Modifier

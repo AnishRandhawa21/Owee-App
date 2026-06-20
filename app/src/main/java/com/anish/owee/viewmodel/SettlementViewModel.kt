@@ -115,6 +115,11 @@ class SettlementViewModel : ViewModel() {
                     "OWEE_SETTLEMENT",
                     "Settlement created"
                 )
+
+                _uiState.value =
+                    _uiState.value.copy(
+                        settlementSuccess = true
+                    )
             }
 
             result.onFailure {

@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anish.owee.data.model.Expense
 import com.anish.owee.data.model.ExpenseParticipant
+import com.anish.owee.data.model.Settlement
 import com.anish.owee.viewmodel.MemberBalanceViewModel
 import kotlin.math.abs
 
@@ -30,6 +31,7 @@ fun MemberBalanceBottomSheet(
     currentUserId: String,
     expenses: List<Expense>,
     participantsByExpense: Map<String, List<ExpenseParticipant>>,
+    settlements: List<Settlement>,
     onDismiss: () -> Unit,
     onSettleClick: (
         memberId: String,
@@ -39,12 +41,13 @@ fun MemberBalanceBottomSheet(
     val viewModel: MemberBalanceViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(memberId) {
+    LaunchedEffect(memberId, expenses, participantsByExpense, settlements) {
         viewModel.loadTransactions(
             currentUserId = currentUserId,
             memberId = memberId,
             expenses = expenses,
-            participantsByExpense = participantsByExpense
+            participantsByExpense = participantsByExpense,
+            settlements = settlements
         )
     }
 
@@ -68,9 +71,21 @@ fun MemberBalanceBottomSheet(
                 )
             )
             
-            val isOwed = uiState.totalAmount > 0
-            val statusText = if (isOwed) "owes you" else "you owe"
-            val statusColor = if (isOwed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+            val totalAmount = uiState.totalAmount
+            val isOwed = totalAmount > 0.01
+            val isOwe = totalAmount < -0.01
+            val isSettled = !isOwed && !isOwe
+            
+            val statusText = when {
+                isSettled -> "SETTLED UP"
+                isOwed -> "owes you"
+                else -> "you owe"
+            }
+            val statusColor = when {
+                isSettled -> MaterialTheme.colorScheme.outline
+                isOwed -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.error
+            }
             
             Text(
                 text = statusText.uppercase(),
@@ -85,7 +100,8 @@ fun MemberBalanceBottomSheet(
 
             // Net Balance Card
             Surface(
-                color = statusColor.copy(alpha = 0.1f),
+                color = if (isSettled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) 
+                        else statusColor.copy(alpha = 0.1f),
                 shape = MaterialTheme.shapes.large,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -95,12 +111,12 @@ fun MemberBalanceBottomSheet(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "₹${"%.2f".format(abs(uiState.totalAmount))}",
+                        text = "₹${"%.2f".format(abs(totalAmount))}",
                         style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = (-1).sp
                         ),
-                        color = statusColor
+                        color = if (isSettled) MaterialTheme.colorScheme.onSurfaceVariant else statusColor
                     )
                 }
             }
@@ -116,7 +132,9 @@ fun MemberBalanceBottomSheet(
             // Transactions List
             LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
                 items(uiState.transactions) { transaction ->
-                    val transIsOwed = transaction.amount > 0
+                    val transIsOwed = transaction.amount > 0.01
+                    val transIsOwe = transaction.amount < -0.01
+                    
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -129,16 +147,27 @@ fun MemberBalanceBottomSheet(
                                 .size(36.dp)
                                 .clip(MaterialTheme.shapes.small)
                                 .background(
-                                    if (transIsOwed) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                    else MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                                    when {
+                                        transIsOwed -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                        transIsOwe -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                                        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                                    }
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = if (transIsOwed) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown,
+                                imageVector = when {
+                                    transIsOwed -> Icons.AutoMirrored.Rounded.TrendingUp
+                                    transIsOwe -> Icons.AutoMirrored.Rounded.TrendingDown
+                                    else -> Icons.AutoMirrored.Rounded.TrendingUp // Should not happen with 0.01 check
+                                },
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = if (transIsOwed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                tint = when {
+                                    transIsOwed -> MaterialTheme.colorScheme.primary
+                                    transIsOwe -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.outline
+                                }
                             )
                         }
                         
@@ -151,9 +180,13 @@ fun MemberBalanceBottomSheet(
                         )
 
                         Text(
-                            text = "${if (transIsOwed) "+" else "-"}₹${"%.2f".format(abs(transaction.amount))}",
+                            text = "${if (transaction.amount > 0) "+" else "-"}₹${"%.2f".format(abs(transaction.amount))}",
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (transIsOwed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            color = when {
+                                transIsOwed -> MaterialTheme.colorScheme.primary
+                                transIsOwe -> MaterialTheme.colorScheme.error
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                     HorizontalDivider(
@@ -165,13 +198,13 @@ fun MemberBalanceBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            if (!isOwed) {
+            if (isOwe) {
                 // Settle Button
                 Button(
                     onClick = {
                         onSettleClick(
                             memberId,
-                            abs(uiState.totalAmount)
+                            abs(totalAmount)
                         )
                     },
                     modifier = Modifier
@@ -179,7 +212,7 @@ fun MemberBalanceBottomSheet(
                         .height(56.dp),
                     shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = statusColor
+                        containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
                     Text(

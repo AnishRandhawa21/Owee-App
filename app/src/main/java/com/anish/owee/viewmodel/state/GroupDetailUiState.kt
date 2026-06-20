@@ -5,6 +5,7 @@ import com.anish.owee.data.model.Group
 import com.anish.owee.data.model.GroupMemberBalance
 import com.anish.owee.data.model.User
 import com.anish.owee.data.model.ExpenseParticipant
+import com.anish.owee.data.model.Settlement
 
 data class GroupDetailUiState(
 
@@ -13,6 +14,8 @@ data class GroupDetailUiState(
     val members: List<User> = emptyList(),
 
     val expenses: List<Expense> = emptyList(),
+
+    val settlements: List<Settlement> = emptyList(),
 
     val balances: List<GroupMemberBalance> = emptyList(),
 

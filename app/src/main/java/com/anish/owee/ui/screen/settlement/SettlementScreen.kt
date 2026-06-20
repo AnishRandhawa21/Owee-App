@@ -35,7 +35,8 @@ fun SettlementScreen(
     sourceType: String,
     sourceId: String,
     userId: String,
-    amount: Double
+    amount: Double,
+    onSettlementSuccess: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -46,6 +47,12 @@ fun SettlementScreen(
 
     val lifecycleOwner =
         LocalLifecycleOwner.current
+
+    LaunchedEffect(uiState.value.settlementSuccess) {
+        if (uiState.value.settlementSuccess) {
+            onSettlementSuccess()
+        }
+    }
 
     LaunchedEffect(
         userId,

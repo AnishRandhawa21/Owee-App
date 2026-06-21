@@ -12,6 +12,10 @@ data class CreateExpenseUiState(
 
     val amount: String = "",
 
+    val isCustomSplit: Boolean = false,
+
+    val customAmounts: Map<String, String> = emptyMap(), // userId -> amount string
+
     val selectedParticipantIds: Set<String> = emptySet(),
 
     val error: String? = null,

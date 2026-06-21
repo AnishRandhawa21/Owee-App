@@ -33,7 +33,7 @@ class ExpenseRepositoryImpl : ExpenseRepository {
         title: String,
         amount: Double,
         payerId: String,
-        participantIds: List<String>
+        participants: Map<String, Double>
     ): Result<Unit> = withContext(Dispatchers.IO) {
 
         try {
@@ -51,10 +51,7 @@ class ExpenseRepositoryImpl : ExpenseRepository {
                 }
                 .decodeSingle<Expense>()
 
-            val shareAmount =
-                amount / participantIds.size
-
-            participantIds.forEach { userId ->
+            participants.forEach { (userId, shareAmount) ->
 
                 postgrest["expense_participants"]
                     .insert(

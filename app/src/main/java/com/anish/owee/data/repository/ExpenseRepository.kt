@@ -11,7 +11,7 @@ interface ExpenseRepository {
         title: String,
         amount: Double,
         payerId: String,
-        participantIds: List<String>
+        participants: Map<String, Double>
     ): Result<Unit>
 
     suspend fun getGroupExpenses(

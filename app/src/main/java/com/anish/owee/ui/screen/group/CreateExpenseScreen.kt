@@ -79,28 +79,17 @@ fun CreateExpenseScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .imePadding() // Entire screen content moves up when keyboard appears
     ) {
-        // --- Status Bar Loading ---
-        AnimatedVisibility(
-            visible = uiState.isLoading,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-            modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
-        ) {
-            LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth().height(3.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.Transparent
-            )
-        }
+        // ... (loading indicator)
 
-        // Main content remains scrollable behind the FAB
+        // Main content remains scrollable
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            contentPadding = PaddingValues(bottom = 160.dp) // Extra padding so content scrolls above FAB
+            contentPadding = PaddingValues(bottom = 100.dp) // Adjusted padding
         ) {
             // Header
             item {
@@ -227,7 +216,54 @@ fun CreateExpenseScreen(
                             else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                         )
                 )
-                Spacer(Modifier.height(48.dp))
+                Spacer(Modifier.height(32.dp))
+            }
+
+            // --- Split Toggle ---
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Split equally",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (!uiState.isCustomSplit) FontWeight.Bold else FontWeight.Normal,
+                        color = if (!uiState.isCustomSplit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Switch(
+                        checked = uiState.isCustomSplit,
+                        onCheckedChange = viewModel::updateSplitMode,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    )
+                    
+                    Text(
+                        text = "Custom split",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (uiState.isCustomSplit) FontWeight.Bold else FontWeight.Normal,
+                        color = if (uiState.isCustomSplit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                if (uiState.error != null) {
+                    Text(
+                        text = uiState.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                
+                Spacer(Modifier.height(16.dp))
             }
 
             // --- Participant Selection Header ---
@@ -266,7 +302,10 @@ fun CreateExpenseScreen(
                 ParticipantSelectionItem(
                     user = member,
                     isSelected = uiState.selectedParticipantIds.contains(member.id),
-                    onToggle = { viewModel.toggleParticipant(member.id) }
+                    isCustomSplit = uiState.isCustomSplit,
+                    customAmount = uiState.customAmounts[member.id] ?: "",
+                    onToggle = { viewModel.toggleParticipant(member.id) },
+                    onAmountChange = { viewModel.updateCustomAmount(member.id, it) }
                 )
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 24.dp),
@@ -281,8 +320,7 @@ fun CreateExpenseScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .navigationBarsPadding() // Fixed hiding behind nav bar
-                .imePadding() // Only the button moves up with keyboard
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {
             Button(
@@ -343,7 +381,10 @@ fun CreateExpenseScreen(
 fun ParticipantSelectionItem(
     user: User,
     isSelected: Boolean,
-    onToggle: () -> Unit
+    isCustomSplit: Boolean,
+    customAmount: String,
+    onToggle: () -> Unit,
+    onAmountChange: (String) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -391,12 +432,31 @@ fun ParticipantSelectionItem(
             )
         }
 
-        // Selection Indicator
-        Icon(
-            imageVector = if (isSelected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-            contentDescription = null,
-            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier.size(24.dp)
-        )
+        if (isCustomSplit && isSelected) {
+            TextField(
+                value = customAmount,
+                onValueChange = onAmountChange,
+                modifier = Modifier.width(80.dp),
+                placeholder = { Text("0", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)) },
+                prefix = { Text("₹", style = MaterialTheme.typography.bodyMedium) },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = Color.Transparent
+                )
+            )
+        } else {
+            // Selection Indicator
+            Icon(
+                imageVector = if (isSelected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }

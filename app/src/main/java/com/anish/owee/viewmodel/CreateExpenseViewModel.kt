@@ -78,23 +78,49 @@ class CreateExpenseViewModel : ViewModel() {
         val selected =
             _uiState.value.selectedParticipantIds.toMutableSet()
 
+        val customAmounts = _uiState.value.customAmounts.toMutableMap()
+
         if (selected.contains(userId)) {
             selected.remove(userId)
+            customAmounts.remove(userId)
         } else {
             selected.add(userId)
         }
 
         _uiState.value =
             _uiState.value.copy(
-                selectedParticipantIds = selected
+                selectedParticipantIds = selected,
+                customAmounts = customAmounts
             )
+    }
+
+    fun updateSplitMode(isCustom: Boolean) {
+        val selected = _uiState.value.selectedParticipantIds
+        
+        // When switching to custom split, ensure everyone is "selected" to show textboxes
+        val newSelected = if (isCustom) {
+            _uiState.value.members.map { it.id }.toSet()
+        } else {
+            selected
+        }
+
+        _uiState.value = _uiState.value.copy(
+            isCustomSplit = isCustom,
+            selectedParticipantIds = newSelected
+        )
+    }
+
+    fun updateCustomAmount(userId: String, amount: String) {
+        val customAmounts = _uiState.value.customAmounts.toMutableMap()
+        customAmounts[userId] = amount
+        _uiState.value = _uiState.value.copy(customAmounts = customAmounts)
     }
 
     fun createExpense(
         groupId: String
     ) {
 
-        val amount =
+        val totalAmount =
             _uiState.value.amount.toDoubleOrNull()
                 ?: return
 
@@ -102,21 +128,49 @@ class CreateExpenseViewModel : ViewModel() {
             groupRepository.getCurrentUserId()
                 ?: return
 
+        val selectedIds = _uiState.value.selectedParticipantIds
+        if (selectedIds.isEmpty()) return
+
+        val participantShares = mutableMapOf<String, Double>()
+
+        if (_uiState.value.isCustomSplit) {
+            // Custom Split
+            var sum = 0.0
+            selectedIds.forEach { id ->
+                val share = _uiState.value.customAmounts[id]?.toDoubleOrNull() ?: 0.0
+                participantShares[id] = share
+                sum += share
+            }
+
+            if (kotlin.math.abs(sum - totalAmount) > 0.01) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Total split (₹$sum) doesn't match expense amount (₹$totalAmount)"
+                )
+                return
+            }
+        } else {
+            // Equal Split
+            val share = totalAmount / selectedIds.size
+            selectedIds.forEach { id ->
+                participantShares[id] = share
+            }
+        }
+
         viewModelScope.launch {
 
             _uiState.value =
                 _uiState.value.copy(
-                    isLoading = true
+                    isLoading = true,
+                    error = null
                 )
 
             val result =
                 expenseRepository.createExpense(
                     groupId = groupId,
                     title = _uiState.value.title,
-                    amount = amount,
+                    amount = totalAmount,
                     payerId = currentUser,
-                    participantIds =
-                        _uiState.value.selectedParticipantIds.toList()
+                    participants = participantShares
                 )
 
             result.onSuccess {

@@ -142,7 +142,10 @@ fun GroupDetailScreen(
                     if (uiState.group != null) {
                         // Summary Card
                         item {
-                            GroupSummaryPremium(uiState.balances)
+                            GroupSummaryPremium(
+                                balances = uiState.balances,
+                                totalSpent = uiState.expenses.sumOf { it.amount }
+                            )
                         }
 
                         // Balances Section
@@ -298,7 +301,7 @@ fun GroupDetailScreen(
 }
 
 @Composable
-fun GroupSummaryPremium(balances: List<GroupMemberBalance>) {
+fun GroupSummaryPremium(balances: List<GroupMemberBalance>, totalSpent: Double) {
     val totalOwed = balances.filter { it.amount > 0 }.sumOf { it.amount }
     val totalOwe = balances.filter { it.amount < 0 }.sumOf { abs(it.amount) }
     val netBalance = totalOwed - totalOwe
@@ -333,17 +336,30 @@ fun GroupSummaryPremium(balances: List<GroupMemberBalance>) {
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
-                        text = "Net Balance",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "TOTAL BALANCE",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "₹${"%.2f".format(netBalance)}",
+                        text = "₹${"%.2f".format(abs(netBalance))}",
                         style = MaterialTheme.typography.displaySmall.copy(
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = (-1).sp
                         ),
-                        color = if (netBalance >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        color = when {
+                            netBalance > 0.01 -> MaterialTheme.colorScheme.primary
+                            netBalance < -0.01 -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
+                    )
+                    
+                    Text(
+                        text = "₹${"%.0f".format(totalOwed)} / ₹${"%.0f".format(totalSpent)} spent",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
             }

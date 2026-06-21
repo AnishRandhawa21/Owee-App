@@ -59,28 +59,20 @@ class GroupRepositoryImpl : GroupRepository {
                 }
                 .decodeSingle<Group>()
 
-            // Add creator as member
-            postgrest["group_members"].insert(
-                mapOf(
-                    "group_id" to group.id,
-                    "user_id" to currentUserId
-                )
+             // Bulk add all members (including creator) in ONE call
+            val membersToInsert = mutableListOf(
+                mapOf("group_id" to group.id, "user_id" to currentUserId)
             )
-
-
-            // Add selected friends
+            
             memberIds.forEach { memberId ->
-                postgrest["group_members"].insert(
-                    mapOf(
-                        "group_id" to group.id,
-                        "user_id" to memberId
-                    )
-                )
+                membersToInsert.add(mapOf("group_id" to group.id, "user_id" to memberId))
             }
+
+            postgrest["group_members"].insert(membersToInsert)
 
             android.util.Log.d(
                 "OWEE_GROUP",
-                "Group created with ${memberIds.size + 1} members"
+                "Group created successfully with ${membersToInsert.size} members"
             )
 
             Result.success(Unit)
@@ -102,17 +94,15 @@ class GroupRepositoryImpl : GroupRepository {
         withContext(Dispatchers.IO) {
             val currentUserId = auth.currentUserOrNull()?.id ?: return@withContext emptyList()
             try {
-                // 1. Get all group IDs the user is in
+                // 1. Get all group memberships for the current user
                 val memberships = postgrest["group_members"]
-                    .select {
-                        filter { eq("user_id", currentUserId) }
-                    }
+                    .select { filter { eq("user_id", currentUserId) } }
                     .decodeList<GroupMember>()
                 
                 val groupIds = memberships.map { it.groupId }
                 if (groupIds.isEmpty()) return@withContext emptyList()
 
-                // 2. Fetch groups ordered by newest first
+                // 2. Fetch the groups
                 val groups = postgrest["groups"]
                     .select {
                         filter { isIn("id", groupIds) }
@@ -120,19 +110,28 @@ class GroupRepositoryImpl : GroupRepository {
                     }
                     .decodeList<Group>()
 
-                val allCreators = postgrest["users"]
-                    .select {
-                        filter { isIn("id", groups.map { it.createdBy }.distinct()) }
+                // 3. Fetch all members and creators for these groups in ONE call using a join
+                // This is the most optimized way to get everything at once
+                val allGroupDetails = postgrest["group_members"]
+                    .select(Columns.raw("group_id, user:users(*)")) {
+                        filter { isIn("group_id", groupIds) }
                     }
+                    .decodeList<GroupMemberUser>()
+                
+                val membersByGroup = allGroupDetails.groupBy { it.groupId }
+                
+                // Fetch creators separately to be safe, but still in bulk
+                val creatorIds = groups.map { it.createdBy }.distinct()
+                val creators = postgrest["users"]
+                    .select { filter { isIn("id", creatorIds) } }
                     .decodeList<User>()
                     .associateBy { it.id }
 
                 groups.map { group ->
-                    val members = getGroupMembers(group.id)
                     GroupWithMetadata(
                         group = group,
-                        creator = allCreators[group.createdBy],
-                        members = members
+                        creator = creators[group.createdBy],
+                        members = membersByGroup[group.id]?.mapNotNull { it.user } ?: emptyList()
                     )
                 }
             } catch (e: Exception) {

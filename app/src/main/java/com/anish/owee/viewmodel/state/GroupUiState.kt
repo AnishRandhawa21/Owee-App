@@ -16,5 +16,6 @@ data class GroupUiState(
 data class GroupWithMetadata(
     val group: Group,
     val creator: User? = null,
-    val members: List<User> = emptyList()
+    val members: List<User> = emptyList(),
+    val isSettled: Boolean = false
 )

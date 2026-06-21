@@ -557,16 +557,27 @@ fun GroupItemPremium(groupWithMetadata: GroupWithMetadata) {
                 }
             }
 
+            // Settlement Status Badge
+            val badgeColor = if (groupWithMetadata.isSettled) 
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            else 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            
+            val badgeTextColor = if (groupWithMetadata.isSettled)
+                MaterialTheme.colorScheme.secondary
+            else
+                MaterialTheme.colorScheme.primary
+
             Surface(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                color = badgeColor,
                 shape = MaterialTheme.shapes.extraSmall
             ) {
                 Text(
-                    text = "ACTIVE",
+                    text = if (groupWithMetadata.isSettled) "SETTLED" else "ACTIVE",
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = badgeTextColor,
                         letterSpacing = 0.5.sp
                     )
                 )

@@ -190,16 +190,21 @@ fun ExpenseDetailBottomSheet(
                             )
 
                             // Status for individual participant
-                            val isPayer = expense.payerId == currentUserId
                             val pUserId = participant.user?.id
-                            if (isPayer && pUserId != null && pUserId != currentUserId) {
-                                val pBalance = balances.find { it.userId == pUserId }?.amount ?: 0.0
-                                StatusBadge(isPaid = pBalance <= 0.01)
+                            if (pUserId == expense.payerId) {
+                                StatusBadge(text = "PAYER", color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.width(12.dp))
-                            } else if (!isPayer && pUserId == currentUserId) {
-                                val balanceWithPayer = balances.find { it.userId == expense.payerId }?.amount ?: 0.0
-                                StatusBadge(isPaid = balanceWithPayer >= -0.01)
-                                Spacer(modifier = Modifier.width(12.dp))
+                            } else {
+                                val isMeThePayer = expense.payerId == currentUserId
+                                if (isMeThePayer && pUserId != null) {
+                                    val pBalance = balances.find { it.userId == pUserId }?.amount ?: 0.0
+                                    StatusBadge(isPaid = pBalance <= 0.01)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                } else if (pUserId == currentUserId) {
+                                    val balanceWithPayer = balances.find { it.userId == expense.payerId }?.amount ?: 0.0
+                                    StatusBadge(isPaid = balanceWithPayer >= -0.01)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                }
                             }
 
                             Text(
@@ -230,17 +235,25 @@ fun ExpenseDetailBottomSheet(
 
 @Composable
 fun StatusBadge(isPaid: Boolean) {
+    StatusBadge(
+        text = if (isPaid) "PAID" else "UNPAID",
+        color = if (isPaid) Color(0xFF2E7D32) else Color(0xFFEF6C00)
+    )
+}
+
+@Composable
+fun StatusBadge(text: String, color: Color) {
     Surface(
-        color = if (isPaid) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color(0xFFFF9800).copy(alpha = 0.1f),
+        color = color.copy(alpha = 0.1f),
         shape = CircleShape,
     ) {
         Text(
-            text = if (isPaid) "PAID" else "UNPAID",
+            text = text,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 10.sp
             ),
-            color = if (isPaid) Color(0xFF2E7D32) else Color(0xFFEF6C00),
+            color = color,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }

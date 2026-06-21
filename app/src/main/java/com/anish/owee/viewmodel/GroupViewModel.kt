@@ -55,32 +55,70 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val deletedGroupIds = mutableSetOf<String>()
+
     fun loadGroups(isSilent: Boolean = false) {
         viewModelScope.launch {
+            val cachedGroups = preferenceManager.getGroups()
+            if (cachedGroups.isNotEmpty() && _uiState.value.groups.isEmpty()) {
+                _uiState.value = _uiState.value.copy(groups = cachedGroups)
+            }
 
             if (!isSilent && _uiState.value.groups.isEmpty()) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = true,
-                    error = null
-                )
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             }
 
             try {
-                val groups = groupRepository.getGroupsWithMetadata()
-                val currentUserId = groupRepository.getCurrentUserId()
+                val currentUserId = groupRepository.getCurrentUserId() ?: return@launch
+                val rawNetworkGroups = groupRepository.getGroupsWithMetadata()
+                
+                // Filter out any groups that we just deleted optimistically
+                val networkGroups = rawNetworkGroups.filter { !deletedGroupIds.contains(it.group.id) }
 
+                // UPDATE UI IMMEDIATELY WITH NETWORK DATA
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    groups = groups,
+                    groups = networkGroups.map { net ->
+                        // Preserve the settled status from state if it already exists to avoid badge flicker
+                        val existing = _uiState.value.groups.find { it.group.id == net.group.id }
+                        net.copy(isSettled = existing?.isSettled ?: true)
+                    },
                     currentUserId = currentUserId
                 )
 
-                // Save to cache
-                preferenceManager.saveGroups(groups)
+                // BACKGROUND: Update settlement badges
+                val updatedGroups = networkGroups.map { metadata ->
+                    val groupId = metadata.group.id
+                    val expenses = expenseRepository.getGroupExpenses(groupId)
+                    
+                    val isSettled = if (expenses.isEmpty()) {
+                        true
+                    } else {
+                        val settlements = settlementRepository.getSettlements("GROUP", groupId)
+                        val allParticipants = expenseRepository.getAllExpenseParticipants(expenses.map { it.id })
+                        val participantsByExpense = allParticipants.groupBy { it.expenseId }
+
+                        val balances = GroupBalanceCalculator.calculateBalances(
+                            currentUserId = currentUserId,
+                            expenses = expenses,
+                            participantsByExpense = participantsByExpense,
+                            settlements = settlements
+                        )
+                        balances.isEmpty()
+                    }
+                    metadata.copy(isSettled = isSettled)
+                }
+
+                // Final safety check: ensure we don't bring back deleted groups
+                val finalGroups = updatedGroups.filter { !deletedGroupIds.contains(it.group.id) }
+
+                _uiState.value = _uiState.value.copy(groups = finalGroups)
+                preferenceManager.saveGroups(finalGroups)
+
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message
+                    error = if (_uiState.value.groups.isEmpty()) e.message else null
                 )
             }
         }
@@ -142,23 +180,29 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteGroup(groupId: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            // OPTIMISTIC DELETE: Update UI instantly
+            deletedGroupIds.add(groupId)
+            val previousGroups = _uiState.value.groups
+            val updatedGroups = previousGroups.filter { it.group.id != groupId }
+            
+            _uiState.value = _uiState.value.copy(
+                groups = updatedGroups,
+                validationAllSettled = null
+            )
+            
+            // Update cache instantly
+            preferenceManager.saveGroups(updatedGroups)
 
             val result = groupRepository.deleteGroup(groupId)
 
-            result.onSuccess {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    groups = _uiState.value.groups.filter { it.group.id != groupId },
-                    validationAllSettled = null
-                )
-            }
-
             result.onFailure {
+                // ROLLBACK: If it actually fails on the server
+                deletedGroupIds.remove(groupId)
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
+                    groups = previousGroups,
                     error = "Could not delete group. Please try again."
                 )
+                preferenceManager.saveGroups(previousGroups)
             }
         }
     }

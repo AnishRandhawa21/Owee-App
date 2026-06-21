@@ -9,6 +9,16 @@ import com.anish.owee.data.model.CreateExpenseRequest
 import com.anish.owee.data.model.CreateExpenseParticipantRequest
 import com.anish.owee.data.model.ExpenseParticipant
 import com.anish.owee.data.model.ExpenseParticipantUser
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.realtime.RealtimeChannel
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.realtime
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import java.util.UUID
 
 import io.github.jan.supabase.postgrest.query.Order
 
@@ -223,4 +233,32 @@ class ExpenseRepositoryImpl : ExpenseRepository {
                 emptyList()
             }
         }
+
+    override fun expenseChanges(): Flow<Unit> = flow {
+        val channelId = "expense_changes_${UUID.randomUUID()}"
+        val channel = client.realtime.channel(channelId)
+
+        try {
+            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to expenses")
+
+            val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "expenses"
+            }
+
+            channel.subscribe()
+            channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
+            
+            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to expenses")
+
+            postgresFlow.collect {
+                android.util.Log.d("OWEE_REALTIME", "Change detected in expenses")
+                emit(Unit)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_REALTIME", "Error in expenseChanges flow", e)
+        } finally {
+            channel.unsubscribe()
+            client.realtime.removeChannel(channel)
+        }
+    }
 }

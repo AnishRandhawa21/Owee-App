@@ -292,22 +292,23 @@ class FriendshipRepositoryImpl : FriendshipRepository {
         val channel = client.realtime.channel(channelId)
 
         try {
+            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to friendships")
+
             val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
                 table = "friendships"
             }
 
-            client.realtime.connect()
-            client.realtime.status.first { it == Realtime.Status.CONNECTED }
-
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
+            
+            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to friendships")
 
             postgresFlow.collect {
+                android.util.Log.d("OWEE_REALTIME", "Change detected in friendships")
                 emit(Unit)
             }
         } catch (e: Exception) {
-            android.util.Log.e("FriendshipRepo", "Error in friendshipChanges", e)
-            throw e
+            android.util.Log.e("OWEE_REALTIME", "Error in friendshipChanges flow", e)
         } finally {
             channel.unsubscribe()
             client.realtime.removeChannel(channel)

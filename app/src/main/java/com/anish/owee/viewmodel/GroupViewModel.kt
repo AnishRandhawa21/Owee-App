@@ -127,12 +127,12 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
     private fun observeGroupChanges() {
 
         viewModelScope.launch {
-
+            com.anish.owee.data.remote.SupabaseProvider.ensureRealtimeConnected()
             groupRepository.groupChanges()
                 .collectLatest {
 
                     android.util.Log.d(
-                        "OWEE_GROUP",
+                        "OWEE_REALTIME",
                         "Group change received"
                     )
 

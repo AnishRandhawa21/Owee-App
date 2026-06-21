@@ -15,6 +15,8 @@ import com.anish.owee.viewmodel.state.FriendRequestUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
 class FriendRequestViewModel(application: Application) : AndroidViewModel(application) {
@@ -36,10 +38,31 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
     val uiState: StateFlow<FriendRequestUiState> =
         _uiState.asStateFlow()
 
+    private var currentFriendId: String? = null
+    private var observationJob: kotlinx.coroutines.Job? = null
+
     fun loadCachedFriendData(friendId: String) {
+        if (currentFriendId == friendId) return
+        currentFriendId = friendId
+        
         val cached = preferenceManager.getFriendDetail(friendId)
         if (cached != null) {
             _uiState.value = cached.copy(isLoading = false)
+        }
+        observeChanges(friendId)
+    }
+
+    private fun observeChanges(friendId: String) {
+        observationJob?.cancel()
+        observationJob = viewModelScope.launch {
+            com.anish.owee.data.remote.SupabaseProvider.ensureRealtimeConnected()
+            merge(
+                repository.requestChanges(),
+                settlementRepository.settlementChanges(),
+                friendshipRepository.friendshipChanges()
+            ).collectLatest {
+                loadRequests(friendId)
+            }
         }
     }
 
@@ -49,13 +72,11 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
 
         viewModelScope.launch {
 
-            if (_uiState.value.requests.isEmpty() && _uiState.value.settlements.isEmpty()) {
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = true,
-                        error = null
-                    )
-            }
+            _uiState.value =
+                _uiState.value.copy(
+                    isLoading = true,
+                    error = null
+                )
 
             try {
                 val currentUserId =

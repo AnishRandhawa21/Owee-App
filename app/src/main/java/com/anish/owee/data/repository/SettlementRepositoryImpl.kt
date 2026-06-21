@@ -109,19 +109,23 @@ class SettlementRepositoryImpl : SettlementRepository {
         val channel = client.realtime.channel(channelId)
 
         try {
+            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to settlements")
+
             val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
                 table = "settlements"
             }
 
-            client.realtime.connect()
-            client.realtime.status.first { it == Realtime.Status.CONNECTED }
-
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
+            
+            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to settlements")
 
             postgresFlow.collect {
+                android.util.Log.d("OWEE_REALTIME", "Change detected in settlements")
                 emit(Unit)
             }
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_REALTIME", "Error in settlementChanges flow", e)
         } finally {
             channel.unsubscribe()
             client.realtime.removeChannel(channel)

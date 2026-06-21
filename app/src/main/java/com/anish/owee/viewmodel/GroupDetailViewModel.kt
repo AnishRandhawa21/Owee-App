@@ -13,6 +13,8 @@ import com.anish.owee.viewmodel.state.GroupDetailUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import com.anish.owee.data.repository.SettlementRepository
 import com.anish.owee.data.repository.SettlementRepositoryImpl
@@ -36,29 +38,58 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
     val uiState: StateFlow<GroupDetailUiState> =
         _uiState.asStateFlow()
 
+    private var currentGroupId: String? = null
+    private var observationJob: kotlinx.coroutines.Job? = null
+
     fun loadCachedGroupData(groupId: String) {
+        if (currentGroupId == groupId) return
+        currentGroupId = groupId
+        
         val cached = preferenceManager.getGroupDetail(groupId)
         if (cached != null) {
             _uiState.value = cached.copy(isLoading = false)
+        }
+        observeChanges(groupId)
+    }
+
+    private fun observeChanges(groupId: String) {
+        observationJob?.cancel()
+        observationJob = viewModelScope.launch {
+            com.anish.owee.data.remote.SupabaseProvider.ensureRealtimeConnected()
+            merge(
+                expenseRepository.expenseChanges(),
+                settlementRepository.settlementChanges(),
+                groupRepository.groupChanges()
+            ).collectLatest {
+                loadGroupData(groupId)
+            }
         }
     }
 
     fun loadGroupData(groupId: String) {
 
         viewModelScope.launch {
-
-            if (_uiState.value.group == null) {
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = true,
-                        error = null
-                    )
+            
+            val currentUserId = groupRepository.getCurrentUserId()
+            if (currentUserId == null) {
+                // If we have data, just turn off loading. If not, show error.
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = if (_uiState.value.group == null) "Session expired" else null
+                )
+                return@launch
             }
 
-            try {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                error = null
+            )
 
-                val group =
-                    groupRepository.getGroup(groupId)
+            try {
+                // Fetch group first to ensure it exists
+                val group = groupRepository.getGroup(groupId) 
+                    ?: throw Exception("Group not found")
+// ... rest of the fetch logic ...
 
                 val members =
                     groupRepository.getGroupMembers(groupId)
@@ -82,34 +113,6 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
                         it.expenseId
                     }
 
-                expenses.forEach { expense ->
-
-                    android.util.Log.d(
-                        "OWEE_EXPENSE_DEBUG",
-                        "Expense=${expense.title} amount=${expense.amount} payer=${expense.payerId}"
-                    )
-
-                    val participants =
-                        participantsByExpense[
-                            expense.id
-                        ] ?: emptyList()
-
-                    participants.forEach {
-
-                        android.util.Log.d(
-                            "OWEE_EXPENSE_DEBUG",
-                            "participant=${it.userId} share=${it.shareAmount}"
-                        )
-                    }
-                }
-
-
-                val currentUserId =
-                    groupRepository.getCurrentUserId()
-                        ?: return@launch
-
-
-
                 val balances =
                     GroupBalanceCalculator
                         .calculateBalances(
@@ -118,18 +121,7 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
                             participantsByExpense = participantsByExpense,
                             settlements = settlements
                         )
-                balances.forEach {
 
-                    android.util.Log.d(
-                        "OWEE_BALANCE",
-                        "${it.userId} -> ${it.amount}"
-                    )
-
-                    android.util.Log.d(
-                        "OWEE_FINAL_BALANCE",
-                        "${it.userId} -> ${it.amount}"
-                    )
-                }
                 _uiState.value =
                     _uiState.value.copy(
                         isLoading = false,
@@ -150,7 +142,7 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
                 _uiState.value =
                     _uiState.value.copy(
                         isLoading = false,
-                        error = e.message
+                        error = if (_uiState.value.group == null) e.message else null
                     )
             }
         }

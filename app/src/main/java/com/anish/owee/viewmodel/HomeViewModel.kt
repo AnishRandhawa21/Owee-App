@@ -43,12 +43,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun observeChanges() {
         viewModelScope.launch {
+            com.anish.owee.data.remote.SupabaseProvider.ensureRealtimeConnected()
             merge(
                 groupRepository.groupChanges(),
                 friendshipRepository.friendshipChanges(),
                 friendRequestRepository.requestChanges(),
-                settlementRepository.settlementChanges()
+                settlementRepository.settlementChanges(),
+                expenseRepository.expenseChanges()
             ).collect {
+                android.util.Log.d("OWEE_REALTIME", "Home data change detected")
                 loadHomeData()
             }
         }

@@ -211,51 +211,29 @@ class GroupRepositoryImpl : GroupRepository {
         }
 
     override fun groupChanges(): Flow<Unit> = flow {
-
-        val channelId =
-            "group_changes_${UUID.randomUUID()}"
-
-        val channel =
-            client.realtime.channel(channelId)
+        val channelId = "group_changes_${UUID.randomUUID()}"
+        val channel = client.realtime.channel(channelId)
 
         try {
-
-            val postgresFlow =
-                channel.postgresChangeFlow<PostgresAction>(
-                    schema = "public"
-                ) {
-                    table = "group_members"
-                }
-
-            client.realtime.connect()
-
-            client.realtime.status.first {
-                it == Realtime.Status.CONNECTED
+            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to group_members")
+            
+            val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "group_members"
             }
 
             channel.subscribe()
-            android.util.Log.d(
-                "OWEE_GROUP",
-                "Subscribed to group realtime"
-            )
-
-            channel.status.first {
-                it == RealtimeChannel.Status.SUBSCRIBED
-            }
+            channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
+            
+            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to group_members")
 
             postgresFlow.collect {
-
-                android.util.Log.d(
-                    "OWEE_GROUP",
-                    "Realtime event received"
-                )
+                android.util.Log.d("OWEE_REALTIME", "Change detected in group_members")
                 emit(Unit)
             }
-
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_REALTIME", "Error in groupChanges flow", e)
         } finally {
-
             channel.unsubscribe()
-
             client.realtime.removeChannel(channel)
         }
     }

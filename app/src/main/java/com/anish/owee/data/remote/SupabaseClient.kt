@@ -8,6 +8,10 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.ktor.client.engine.okhttp.OkHttp
 
+import io.github.jan.supabase.realtime.realtime
+import kotlinx.coroutines.flow.first
+import io.github.jan.supabase.realtime.Realtime as SupabaseRealtime
+
 object SupabaseProvider {
 
     val client: SupabaseClient by lazy {
@@ -23,6 +27,15 @@ object SupabaseProvider {
             install(Auth)
             install(Postgrest)
             install(Realtime)
+        }
+    }
+
+    suspend fun ensureRealtimeConnected() {
+        try {
+            client.realtime.connect()
+            client.realtime.status.first { it == SupabaseRealtime.Status.CONNECTED }
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_REALTIME", "Global connect failed", e)
         }
     }
 }

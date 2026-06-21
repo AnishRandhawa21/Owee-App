@@ -270,9 +270,9 @@ class FriendshipRepositoryImpl : FriendshipRepository {
             postgrest["users"]
                 .select {
                     filter {
-                        ilike(
+                        eq(
                             "username",
-                            "%$query%"
+                            query
                         )
                     }
                 }

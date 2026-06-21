@@ -24,9 +24,9 @@ class UserSearchRepositoryImpl : UserSearchRepository {
             postgrest["users"]
                 .select {
                     filter {
-                        ilike(
+                        eq(
                             "username",
-                            "%$query%"
+                            query
                         )
                     }
                 }

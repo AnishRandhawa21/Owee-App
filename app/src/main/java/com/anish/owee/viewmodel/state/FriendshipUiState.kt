@@ -22,5 +22,7 @@ data class FriendshipUiState(
 
     val currentUserId: String? = null,
 
+    val validationBalance: Double? = null,
+
     val error: String? = null
 )

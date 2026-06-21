@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.local.PreferenceManager
-import com.anish.owee.data.repository.GroupRepository
-import com.anish.owee.data.repository.GroupRepositoryImpl
+import com.anish.owee.data.repository.*
+import com.anish.owee.domain.GroupBalanceCalculator
 import com.anish.owee.viewmodel.state.GroupUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +17,12 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
 
     private val groupRepository: GroupRepository =
         GroupRepositoryImpl()
+
+    private val expenseRepository: ExpenseRepository =
+        ExpenseRepositoryImpl()
+
+    private val settlementRepository: SettlementRepository =
+        SettlementRepositoryImpl()
 
     private val preferenceManager = PreferenceManager(application)
 
@@ -104,24 +110,61 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun validateGroupDeletion(groupId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, validationAllSettled = null)
+
+            try {
+                val currentUserId = groupRepository.getCurrentUserId() ?: return@launch
+
+                val expenses = expenseRepository.getGroupExpenses(groupId)
+                val settlements = settlementRepository.getSettlements("GROUP", groupId)
+                val allParticipants = expenseRepository.getAllExpenseParticipants(expenses.map { it.id })
+                val participantsByExpense = allParticipants.groupBy { it.expenseId }
+
+                val balances = GroupBalanceCalculator.calculateBalances(
+                    currentUserId = currentUserId,
+                    expenses = expenses,
+                    participantsByExpense = participantsByExpense,
+                    settlements = settlements
+                )
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    validationAllSettled = balances.isEmpty()
+                )
+
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
     fun deleteGroup(groupId: String) {
         viewModelScope.launch {
-            // Optimistic UI: Remove the group instantly from the local state
-            val previousState = _uiState.value
-            _uiState.value = _uiState.value.copy(
-                groups = previousState.groups.filter { it.group.id != groupId }
-            )
+            _uiState.value = _uiState.value.copy(isLoading = true)
 
             val result = groupRepository.deleteGroup(groupId)
-            
+
+            result.onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    groups = _uiState.value.groups.filter { it.group.id != groupId },
+                    validationAllSettled = null
+                )
+            }
+
             result.onFailure {
-                // Rollback: If backend fails, put the group back and show error
-                _uiState.value = previousState.copy(
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
                     error = "Could not delete group. Please try again."
                 )
             }
-            // No need to call loadGroups() on success because we already updated the state!
         }
+    }
+
+    fun resetValidation() {
+        _uiState.value = _uiState.value.copy(validationAllSettled = null)
     }
 
     private fun observeGroupChanges() {

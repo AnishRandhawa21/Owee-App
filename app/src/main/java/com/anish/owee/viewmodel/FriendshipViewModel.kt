@@ -4,10 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.local.PreferenceManager
-import com.anish.owee.data.repository.FriendshipRepository
-import com.anish.owee.data.repository.FriendshipRepositoryImpl
-import com.anish.owee.data.repository.UserSearchRepository
-import com.anish.owee.data.repository.UserSearchRepositoryImpl
+import com.anish.owee.data.repository.*
 import com.anish.owee.viewmodel.state.FriendshipUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +19,12 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
 
     private val userSearchRepository: UserSearchRepository =
         UserSearchRepositoryImpl()
+
+    private val friendRequestRepository: FriendRequestRepository =
+        FriendRequestRepositoryImpl()
+
+    private val settlementRepository: SettlementRepository =
+        SettlementRepositoryImpl()
 
     private val preferenceManager = PreferenceManager(application)
 
@@ -179,22 +182,69 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun validateFriendRemoval(friendshipId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, validationBalance = null)
+
+            try {
+                val currentUserId = friendshipRepository.getCurrentUserId() ?: return@launch
+                val friendship = _uiState.value.friends.firstOrNull { it.id == friendshipId } ?: return@launch
+                val friendId = if (friendship.senderId == currentUserId) friendship.receiverId else friendship.senderId
+
+                val requests = friendRequestRepository.getRequestsForFriend(friendId)
+                val settlements = settlementRepository.getSettlements("FRIEND", friendshipId)
+
+                var totalRequestedByMe = 0.0
+                var totalRequestedByFriend = 0.0
+                requests.forEach { 
+                    if (it.creatorId == currentUserId) totalRequestedByMe += it.amount 
+                    else totalRequestedByFriend += it.amount 
+                }
+
+                var totalPaidByMe = 0.0
+                var totalReceivedByMe = 0.0
+                settlements.forEach { 
+                    if (it.payerId == currentUserId) totalPaidByMe += it.amount 
+                    else totalReceivedByMe += it.amount 
+                }
+
+                val netBalance = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
+                
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    validationBalance = netBalance
+                )
+
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
     fun removeFriend(friendshipId: String) {
         viewModelScope.launch {
-            // Optimistic UI: Remove the friend instantly from the local state
-            val previousState = _uiState.value
-            _uiState.value = _uiState.value.copy(
-                friends = previousState.friends.filter { it.id != friendshipId }
-            )
+            _uiState.value = _uiState.value.copy(isLoading = true)
 
             val result = friendshipRepository.removeFriendship(friendshipId)
 
+            result.onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    friends = _uiState.value.friends.filter { it.id != friendshipId },
+                    validationBalance = null
+                )
+            }
+
             result.onFailure {
-                // Rollback: If backend fails, put the friend back and show error
-                _uiState.value = previousState.copy(
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
                     error = "Could not remove friend. Please try again."
                 )
             }
         }
+    }
+
+    fun resetValidation() {
+        _uiState.value = _uiState.value.copy(validationBalance = null)
     }
 }

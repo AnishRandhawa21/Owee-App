@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 data class GroupUiState(
     val groups: List<GroupWithMetadata> = emptyList(),
     val currentUserId: String? = null,
+    val validationAllSettled: Boolean? = null,
     val isLoading: Boolean = false,
     val error: String? = null
 )

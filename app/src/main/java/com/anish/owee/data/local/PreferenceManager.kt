@@ -6,6 +6,7 @@ import com.anish.owee.data.model.Friendship
 import com.anish.owee.viewmodel.state.FriendRequestUiState
 import com.anish.owee.viewmodel.state.GroupDetailUiState
 import com.anish.owee.viewmodel.state.GroupWithMetadata
+import com.anish.owee.viewmodel.state.UserTotalBalance
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -16,21 +17,38 @@ class PreferenceManager(context: Context) {
         encodeDefaults = true
     }
 
-    fun saveHomeBalance(total: Double, groups: Double, friends: Double) {
+    fun saveHomeBalance(total: Double, groups: Double, friends: Double, userBalances: List<UserTotalBalance>) {
         prefs.edit().apply {
             putFloat("total_balance", total.toFloat())
             putFloat("groups_balance", groups.toFloat())
             putFloat("friends_balance", friends.toFloat())
+            putString("user_balances", json.encodeToString(userBalances))
             apply()
         }
     }
 
-    fun getHomeBalance(): Triple<Double, Double, Double> {
+    fun getHomeBalance(): HomeCacheData {
         val total = prefs.getFloat("total_balance", 0.0f).toDouble()
         val groups = prefs.getFloat("groups_balance", 0.0f).toDouble()
         val friends = prefs.getFloat("friends_balance", 0.0f).toDouble()
-        return Triple(total, groups, friends)
+        val balancesJson = prefs.getString("user_balances", null)
+        val userBalances = if (balancesJson != null) {
+            try {
+                json.decodeFromString<List<UserTotalBalance>>(balancesJson)
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else emptyList()
+        
+        return HomeCacheData(total, groups, friends, userBalances)
     }
+
+    data class HomeCacheData(
+        val total: Double,
+        val groups: Double,
+        val friends: Double,
+        val userBalances: List<UserTotalBalance>
+    )
 
     fun saveFriends(friends: List<Friendship>) {
         prefs.edit().apply {

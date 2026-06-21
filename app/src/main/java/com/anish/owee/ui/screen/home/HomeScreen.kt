@@ -2,9 +2,14 @@ package com.anish.owee.ui.screen.home
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingDown
@@ -19,21 +24,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.anish.owee.viewmodel.HomeViewModel
+import com.anish.owee.viewmodel.state.UserTotalBalance
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.anish.owee.ui.theme.Success
+import com.anish.owee.ui.theme.Error
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onUserClick: (String) -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -96,11 +110,35 @@ fun HomeScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    contentPadding = PaddingValues(bottom = 120.dp)
                 ) {
                     // Total Balance Card
                     item {
                         TotalBalanceCard(uiState.totalBalance)
+                    }
+
+                    // Section: Quick Settle (Instagram Story Style)
+                    if (uiState.userBalances.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Quick Settle",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(start = 24.dp, bottom = 16.dp)
+                            )
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                items(uiState.userBalances) { userBalance ->
+                                    PeopleSummaryStory(
+                                        userBalance = userBalance,
+                                        onClick = { onUserClick(userBalance.user.id) }
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
                     }
 
                     // Section: Breakdown
@@ -170,6 +208,84 @@ fun HomeScreen(
 }
 
 @Composable
+fun PeopleSummaryStory(
+    userBalance: UserTotalBalance,
+    onClick: () -> Unit
+) {
+    val isOwed = userBalance.balance > 0.01
+    val borderColor = if (isOwed) Success else Error
+    
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp)
+    ) {
+        Box {
+            Surface(
+                modifier = Modifier
+                    .size(68.dp)
+                    .border(2.dp, borderColor, CircleShape)
+                    .padding(4.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                if (userBalance.user.photoUrl != null) {
+                    AsyncImage(
+                        model = userBalance.user.photoUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = userBalance.user.displayName.take(1).uppercase(),
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                            color = borderColor
+                        )
+                    }
+                }
+            }
+            
+            // Amount Badge
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 2.dp, y = 2.dp),
+                color = borderColor,
+                shape = CircleShape,
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.background)
+            ) {
+                Text(
+                    text = "₹${abs(userBalance.balance).roundToInt()}",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 9.sp
+                    ),
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = userBalance.user.displayName.split(" ").first(),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(72.dp),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
 fun TotalBalanceCard(totalBalance: Double) {
     Surface(
         modifier = Modifier
@@ -203,7 +319,7 @@ fun TotalBalanceCard(totalBalance: Double) {
                 text = "₹${"%.2f".format(abs(totalBalance))}",
                 style = MaterialTheme.typography.displayMedium.copy(
                     fontWeight = FontWeight.Black,
-                    letterSpacing = (-1.5).sp
+                    letterSpacing = (-1).sp
                 ),
                 color = MaterialTheme.colorScheme.onPrimary
             )

@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun GroupsScreen(
+    snackbarHostState: SnackbarHostState,
     onCreateGroupClick: () -> Unit = {},
     onGroupClick: (String) -> Unit = {}
 ) {
@@ -49,7 +50,6 @@ fun GroupsScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
     val listState = rememberLazyListState()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     var groupToDelete by remember { mutableStateOf<GroupWithMetadata?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -177,179 +177,172 @@ fun GroupsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Scaffold(
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading,
+            onRefresh = { viewModel.loadGroups() },
             modifier = Modifier.fillMaxSize(),
-            containerColor = Color.Transparent,
-            snackbarHost = { 
-                SnackbarHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier.padding(bottom = 96.dp) // Lift above floating nav bar
-                ) 
-            }
-        ) { padding ->
-            PullToRefreshBox(
-                isRefreshing = uiState.isLoading,
-                onRefresh = { viewModel.loadGroups() },
-                modifier = Modifier.fillMaxSize().padding(padding),
-                indicator = { }
+            indicator = { }
+        ) {
+            // Animated Status Bar Loading
+            AnimatedVisibility(
+                visible = uiState.isLoading,
+                enter = fadeIn(tween(400)) + expandVertically(tween(400)),
+                exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
+                modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
             ) {
-                // Animated Status Bar Loading
-                AnimatedVisibility(
-                    visible = uiState.isLoading,
-                    enter = fadeIn(tween(400)) + expandVertically(tween(400)),
-                    exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
-                    modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
-                ) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth().height(3.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Transparent
-                    )
-                }
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.Transparent
+                )
+            }
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Groups",
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = 34.sp
-                        ),
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Groups",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-1.5).sp,
+                        fontSize = 34.sp
+                    ),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.onSearchQueryChange(it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        placeholder = {
-                            Text(
-                                text = "Search groups",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Rounded.Search,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotBlank()) {
-                                IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Close,
-                                        contentDescription = "Clear search",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.large,
-                        textStyle = MaterialTheme.typography.bodyLarge,
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent
+                Spacer(modifier = Modifier.height(8.dp))
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChange(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    placeholder = {
+                        Text(
+                            text = "Search groups",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentPadding = PaddingValues(bottom = 120.dp)
-                    ) {
-                        if (uiState.isLoading && uiState.groups.isEmpty()) {
-                            items(6) {
-                                GroupItemShimmer()
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 20.dp),
-                                    thickness = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = "Clear search",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
-                        } else if (filteredGroups.isEmpty() && !uiState.isLoading) {
-                            item {
-                                EmptyGroupsState(isSearching = searchQuery.isNotEmpty())
-                            }
-                        } else {
-                            items(
-                                items = filteredGroups,
-                                key = { it.group.id } 
-                            ) { groupMetadata ->
-                                var showMenu by remember { mutableStateOf(false) }
-                                val isOwner = groupMetadata.group.createdBy == uiState.currentUserId
+                        }
+                    },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
 
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .animateItem(
-                                            fadeInSpec = tween(800, easing = FastOutSlowInEasing),
-                                            fadeOutSpec = tween(500),
-                                            placementSpec = spring(
-                                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                                stiffness = Spring.StiffnessLow
-                                            )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(bottom = 120.dp)
+                ) {
+                    if (uiState.isLoading && uiState.groups.isEmpty()) {
+                        items(6) {
+                            GroupItemShimmer()
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                thickness = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    } else if (filteredGroups.isEmpty() && !uiState.isLoading) {
+                        item {
+                            EmptyGroupsState(isSearching = searchQuery.isNotEmpty())
+                        }
+                    } else {
+                        items(
+                            items = filteredGroups,
+                            key = { it.group.id } 
+                        ) { groupMetadata ->
+                            var showMenu by remember { mutableStateOf(false) }
+                            val isOwner = groupMetadata.group.createdBy == uiState.currentUserId
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem(
+                                        fadeInSpec = tween(800, easing = FastOutSlowInEasing),
+                                        fadeOutSpec = tween(500),
+                                        placementSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessLow
                                         )
-                                        .combinedClickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = ripple(color = MaterialTheme.colorScheme.primary),
-                                            onClick = { onGroupClick(groupMetadata.group.id) },
-                                            onLongClick = {
-                                                if (isOwner) {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    showMenu = true
-                                                }
+                                    )
+                                    .combinedClickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = ripple(color = MaterialTheme.colorScheme.primary),
+                                        onClick = { onGroupClick(groupMetadata.group.id) },
+                                        onLongClick = {
+                                            if (isOwner) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                showMenu = true
+                                            }
+                                        }
+                                    )
+                            ) {
+                                Column {
+                                    GroupItemPremium(groupWithMetadata = groupMetadata)
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        thickness = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+
+                                Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp)) {
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false },
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        shape = MaterialTheme.shapes.medium
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Delete Group", color = MaterialTheme.colorScheme.error) },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Delete,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            },
+                                            onClick = {
+                                                showMenu = false
+                                                groupToDelete = groupMetadata
+                                                showDeleteDialog = true
+                                                viewModel.validateGroupDeletion(groupMetadata.group.id)
                                             }
                                         )
-                                ) {
-                                    Column {
-                                        GroupItemPremium(groupWithMetadata = groupMetadata)
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 20.dp),
-                                            thickness = 1.dp,
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                        )
-                                    }
-
-                                    Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp)) {
-                                        DropdownMenu(
-                                            expanded = showMenu,
-                                            onDismissRequest = { showMenu = false },
-                                            containerColor = MaterialTheme.colorScheme.surface,
-                                            shape = MaterialTheme.shapes.medium
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = { Text("Delete Group", color = MaterialTheme.colorScheme.error) },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.Delete,
-                                                        contentDescription = null,
-                                                        tint = MaterialTheme.colorScheme.error
-                                                    )
-                                                },
-                                                onClick = {
-                                                    showMenu = false
-                                                    groupToDelete = groupMetadata
-                                                    showDeleteDialog = true
-                                                    viewModel.validateGroupDeletion(groupMetadata.group.id)
-                                                }
-                                            )
-                                        }
                                     }
                                 }
                             }

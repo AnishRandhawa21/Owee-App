@@ -18,6 +18,7 @@ import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.merge
 import java.util.UUID
 
 import io.github.jan.supabase.postgrest.query.Order
@@ -236,19 +237,23 @@ class ExpenseRepositoryImpl : ExpenseRepository {
         val channel = client.realtime.channel(channelId)
 
         try {
-            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to expenses")
+            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to expense tables")
 
-            val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            val expenseFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
                 table = "expenses"
+            }
+
+            val participantFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "expense_participants"
             }
 
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
             
-            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to expenses")
+            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to expense tables")
 
-            postgresFlow.collect {
-                android.util.Log.d("OWEE_REALTIME", "Change detected in expenses")
+            merge(expenseFlow, participantFlow).collect {
+                android.util.Log.d("OWEE_REALTIME", "Change detected in expenses/participants")
                 emit(Unit)
             }
         } catch (e: Exception) {

@@ -1,5 +1,6 @@
 package com.anish.owee.navigation
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -12,6 +13,7 @@ import com.anish.owee.ui.screen.group.CreateExpenseScreen
 import com.anish.owee.ui.screen.group.CreateGroupScreen
 import com.anish.owee.ui.screen.group.GroupDetailScreen
 import com.anish.owee.ui.screen.group.GroupsScreen
+import com.anish.owee.ui.screen.home.CustomSettlementScreen
 import com.anish.owee.ui.screen.home.HomeScreen
 import com.anish.owee.ui.screen.profile.ProfileScreen
 import com.anish.owee.viewmodel.SessionViewModel
@@ -20,6 +22,7 @@ import com.anish.owee.ui.screen.settlement.SettlementScreen
 fun MainNavGraph(
     navController: NavHostController,
     sessionViewModel: SessionViewModel,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -28,11 +31,18 @@ fun MainNavGraph(
         modifier = modifier
     ) {
         composable(Route.Home.route) {
-            HomeScreen()
+            HomeScreen(
+                onUserClick = { userId ->
+                    navController.navigate("${Route.CustomSettlement.route}/$userId")
+                }
+            )
         }
 
         composable(Route.Friends.route) {
-            FriendsScreen(navController = navController)
+            FriendsScreen(
+                navController = navController,
+                snackbarHostState = snackbarHostState
+            )
         }
         composable(
             route = "${Route.FriendDetail.route}/{friendId}"
@@ -86,6 +96,7 @@ fun MainNavGraph(
 
         composable(Route.Groups.route) {
             GroupsScreen(
+                snackbarHostState = snackbarHostState,
                 onCreateGroupClick = {
                     navController.navigate(
                         Route.CreateGroup.route
@@ -190,6 +201,16 @@ fun MainNavGraph(
                 onSettlementSuccess = {
                     navController.popBackStack()
                 }
+            )
+        }
+
+        composable(
+            route = "${Route.CustomSettlement.route}/{userId}"
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId").orEmpty()
+            CustomSettlementScreen(
+                userId = userId,
+                onBack = { navController.popBackStack() }
             )
         }
 

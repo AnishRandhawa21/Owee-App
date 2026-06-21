@@ -22,6 +22,7 @@ import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.merge
 import java.util.UUID
 class GroupRepositoryImpl : GroupRepository {
 
@@ -214,19 +215,23 @@ class GroupRepositoryImpl : GroupRepository {
         val channel = client.realtime.channel(channelId)
 
         try {
-            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to group_members")
+            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to group tables")
             
-            val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            val membersFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
                 table = "group_members"
+            }
+
+            val groupsFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "groups"
             }
 
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
             
-            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to group_members")
+            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to group tables")
 
-            postgresFlow.collect {
-                android.util.Log.d("OWEE_REALTIME", "Change detected in group_members")
+            merge(membersFlow, groupsFlow).collect {
+                android.util.Log.d("OWEE_REALTIME", "Change detected in groups/members")
                 emit(Unit)
             }
         } catch (e: Exception) {

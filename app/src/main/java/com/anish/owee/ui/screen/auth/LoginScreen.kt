@@ -36,6 +36,7 @@ fun LoginScreen(
     val coroutineScope = rememberCoroutineScope()
     val googleAuthManager = remember { GoogleAuthManager(context) }
     val sessionState by sessionViewModel.sessionState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val infiniteTransition = rememberInfiniteTransition(label = "bg_anim")
     val blobProgress by infiniteTransition.animateFloat(
@@ -48,80 +49,91 @@ fun LoginScreen(
         label = "blob"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Background)
-            .drawBehind { drawAmbientBlobs(blobProgress) }
-    ) {
-        Column(
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = Color.Transparent
+    ) { padding ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .background(Background)
+                .drawBehind { drawAmbientBlobs(blobProgress) }
+                .padding(padding)
         ) {
-
-            // ── Branding ──────────────────────────────────────────────────
-            Column(modifier = Modifier.padding(top = 100.dp)) {
-                Text(
-                    text = "OWEE",
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 4.sp,
-                        fontSize = 42.sp
-                    ),
-                    color = Primary
-                )
-
-                Spacer(Modifier.height(48.dp))
-
-                Text(
-                    text = "Split smart.\nLive better.",
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        lineHeight = 44.sp,
-                        letterSpacing = (-1.5).sp
-                    ),
-                    color = TextPrimary
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                Text(
-                    text = "The simplest way to track shared expenses and settle up instantly.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TextSecondary,
-                    lineHeight = 26.sp
-                )
-            }
-
-            // ── Sign-in CTA ───────────────────────────────────────────────
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(bottom = 64.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                GoogleSignInButton(
-                    isLoading = sessionState is SessionState.Loading,
-                    onClick = {
-                        coroutineScope.launch {
-                            googleAuthManager.signIn().fold(
-                                onSuccess = { idToken ->
-                                    sessionViewModel.signInWithGoogle(idToken)
-                                },
-                                onFailure = { }
-                            )
+
+                // ── Branding ──────────────────────────────────────────────────
+                Column(modifier = Modifier.padding(top = 100.dp)) {
+                    Text(
+                        text = "OWEE",
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 4.sp,
+                            fontSize = 42.sp
+                        ),
+                        color = Primary
+                    )
+
+                    Spacer(Modifier.height(48.dp))
+
+                    Text(
+                        text = "Split smart.\nLive better.",
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            lineHeight = 44.sp,
+                            letterSpacing = (-1.5).sp
+                        ),
+                        color = TextPrimary
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Text(
+                        text = "The simplest way to track shared expenses and settle up instantly.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextSecondary,
+                        lineHeight = 26.sp
+                    )
+                }
+
+                // ── Sign-in CTA ───────────────────────────────────────────────
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(bottom = 64.dp)
+                ) {
+                    GoogleSignInButton(
+                        isLoading = sessionState is SessionState.Loading,
+                        onClick = {
+                            coroutineScope.launch {
+                                googleAuthManager.signIn().fold(
+                                    onSuccess = { idToken ->
+                                        sessionViewModel.signInWithGoogle(idToken)
+                                    },
+                                    onFailure = { error ->
+                                        snackbarHostState.showSnackbar(
+                                            message = "Login failed: ${error.localizedMessage ?: "Unknown error"}",
+                                            duration = SnackbarDuration.Long
+                                        )
+                                    }
+                                )
+                            }
                         }
-                    }
-                )
+                    )
 
-                Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                Text(
-                    text = "By continuing, you agree to our Terms and Privacy Policy.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = "By continuing, you agree to our Terms and Privacy Policy.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }

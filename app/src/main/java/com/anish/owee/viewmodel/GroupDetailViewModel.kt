@@ -104,9 +104,7 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
                     )
 
                 val allParticipants =
-                    expenseRepository.getAllExpenseParticipants(
-                        expenses.map { it.id }
-                    )
+                    expenseRepository.getGroupExpenseParticipants(groupId)
 
                 val participantsByExpense =
                     allParticipants.groupBy {

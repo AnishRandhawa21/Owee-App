@@ -21,5 +21,6 @@ sealed class Route(val route: String) {
     data object CreateExpense : Route("create_expense")
 
     data object Settlement : Route("settlement")
+    data object CustomSettlement : Route("custom_settlement")
     data object Profile : Route("profile")
 }

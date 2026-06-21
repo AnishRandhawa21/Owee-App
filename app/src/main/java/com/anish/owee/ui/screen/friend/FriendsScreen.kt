@@ -51,12 +51,12 @@ import com.anish.owee.ui.screen.friend.components.SearchResultStatus
 @Composable
 fun FriendsScreen(
     navController: NavHostController,
+    snackbarHostState: SnackbarHostState,
     friendshipViewModel: FriendshipViewModel = viewModel()
 ) {
     val uiState by friendshipViewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
-    val snackbarHostState = remember { SnackbarHostState() }
 
     var friendshipToRemove by remember { mutableStateOf<Friendship?>(null) }
     var showRemoveDialog by remember { mutableStateOf(false) }
@@ -177,267 +177,256 @@ fun FriendsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Scaffold(
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading,
+            onRefresh = { friendshipViewModel.loadData() },
             modifier = Modifier.fillMaxSize(),
-            containerColor = Color.Transparent,
-            snackbarHost = { 
-                SnackbarHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier.padding(bottom = 96.dp) // Lift above floating nav bar
-                ) 
-            }
-        ) { padding ->
-            PullToRefreshBox(
-                isRefreshing = uiState.isLoading,
-                onRefresh = { friendshipViewModel.loadData() },
-                modifier = Modifier.fillMaxSize().padding(padding),
-                indicator = { } // Remove default spinner
+            indicator = { } // Remove default spinner
+        ) {
+            // --- Status Bar Loading ---
+            AnimatedVisibility(
+                visible = uiState.isLoading || uiState.isSearching,
+                enter = fadeIn(tween(400)) + expandVertically(tween(400)),
+                exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
+                modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
             ) {
-                // --- Status Bar Loading ---
-                AnimatedVisibility(
-                    visible = uiState.isLoading || uiState.isSearching,
-                    enter = fadeIn(tween(400)) + expandVertically(tween(400)),
-                    exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
-                    modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
-                ) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth().height(3.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Transparent
-                    )
-                }
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.Transparent
+                )
+            }
 
-                Column(
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
+                // Fixed Header
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Friends",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-1.5).sp,
+                        fontSize = 34.sp
+                    ),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                // Fixed Search Bar
+                Spacer(modifier = Modifier.height(8.dp))
+                TextField(
+                    value = uiState.searchQuery,
+                    onValueChange = friendshipViewModel::updateSearchQuery,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                ) {
-                    // Fixed Header
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Friends",
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-1.5).sp,
-                            fontSize = 34.sp
-                        ),
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onBackground
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    placeholder = {
+                        Text(
+                            text = "Search by username",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon = {
+                        if (uiState.searchQuery.isNotBlank()) {
+                            IconButton(onClick = { friendshipViewModel.updateSearchQuery("") }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = "Clear search",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { friendshipViewModel.searchUsers() }),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
                     )
+                )
 
-                    // Fixed Search Bar
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextField(
-                        value = uiState.searchQuery,
-                        onValueChange = friendshipViewModel::updateSearchQuery,
+                // Search Results
+                AnimatedVisibility(visible = uiState.hasSearched || uiState.searchResults.isNotEmpty() || uiState.isSearching) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        placeholder = {
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                    ) {
+                        if (uiState.searchResults.isEmpty() && !uiState.isSearching && uiState.hasSearched) {
                             Text(
-                                text = "Search by username",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "No user found with this username",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 12.dp)
                             )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Rounded.Search,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        trailingIcon = {
-                            if (uiState.searchQuery.isNotBlank()) {
-                                IconButton(onClick = { friendshipViewModel.updateSearchQuery("") }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Close,
-                                        contentDescription = "Clear search",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
+                        } else {
+                            uiState.searchResults.forEach { user ->
+                                val status = when {
+                                    uiState.friends.any { it.senderId == user.id || it.receiverId == user.id } -> SearchResultStatus.Added
+                                    uiState.outgoingRequests.any { it.receiverId == user.id } -> SearchResultStatus.Sent
+                                    else -> SearchResultStatus.Add
                                 }
-                            }
-                        },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.large,
-                        textStyle = MaterialTheme.typography.bodyLarge,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { friendshipViewModel.searchUsers() }),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent
-                        )
-                    )
 
-                    // Search Results
-                    AnimatedVisibility(visible = uiState.hasSearched || uiState.searchResults.isNotEmpty() || uiState.isSearching) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp)
-                        ) {
-                            if (uiState.searchResults.isEmpty() && !uiState.isSearching && uiState.hasSearched) {
-                                Text(
-                                    text = "No user found with this username",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(vertical = 12.dp)
-                                )
-                            } else {
-                                uiState.searchResults.forEach { user ->
-                                    val status = when {
-                                        uiState.friends.any { it.senderId == user.id || it.receiverId == user.id } -> SearchResultStatus.Added
-                                        uiState.outgoingRequests.any { it.receiverId == user.id } -> SearchResultStatus.Sent
-                                        else -> SearchResultStatus.Add
+                                SearchResultCard(
+                                    displayName = user.displayName,
+                                    username = user.username,
+                                    photoUrl = user.photoUrl,
+                                    status = status,
+                                    onAddClick = {
+                                        friendshipViewModel.sendFriendRequest(user.id)
                                     }
-
-                                    SearchResultCard(
-                                        displayName = user.displayName,
-                                        username = user.username,
-                                        photoUrl = user.photoUrl,
-                                        status = status,
-                                        onAddClick = {
-                                            friendshipViewModel.sendFriendRequest(user.id)
-                                        }
-                                    )
-                                }
+                                )
                             }
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    // Scrollable List
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentPadding = PaddingValues(bottom = 100.dp)
-                    ) {
-                        if (uiState.incomingRequests.isNotEmpty()) {
-                            item {
-                                SectionHeader(
-                                    title = "Pending Requests",
-                                    count = uiState.incomingRequests.size
-                                )
-                            }
-
-                            items(
-                                items = uiState.incomingRequests,
-                                key = { "req_${it.id}" }
-                            ) { request ->
-                                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
-                                    FriendRequestCard(
-                                        senderDisplayName = request.sender?.displayName ?: "Unknown",
-                                        senderUsername = request.sender?.username ?: "unknown",
-                                        senderPhotoUrl = request.sender?.photoUrl,
-                                        onAccept = {
-                                            friendshipViewModel.acceptFriendRequest(request.id)
-                                        },
-                                        onReject = {
-                                            friendshipViewModel.rejectFriendRequest(request.id)
-                                        }
-                                    )
-                                }
-                            }
-
-                            item { Spacer(modifier = Modifier.height(16.dp)) }
-                        }
-
+                // Scrollable List
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(bottom = 100.dp)
+                ) {
+                    if (uiState.incomingRequests.isNotEmpty()) {
                         item {
                             SectionHeader(
-                                title = "Your Friends",
-                                count = uiState.friends.size.takeIf { it > 0 }
+                                title = "Pending Requests",
+                                count = uiState.incomingRequests.size
                             )
                         }
 
-                        if (uiState.isLoading && uiState.friends.isEmpty()) {
-                            items(5) {
-                                FriendItemShimmer()
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 20.dp),
-                                    thickness = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        items(
+                            items = uiState.incomingRequests,
+                            key = { "req_${it.id}" }
+                        ) { request ->
+                            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+                                FriendRequestCard(
+                                    senderDisplayName = request.sender?.displayName ?: "Unknown",
+                                    senderUsername = request.sender?.username ?: "unknown",
+                                    senderPhotoUrl = request.sender?.photoUrl,
+                                    onAccept = {
+                                        friendshipViewModel.acceptFriendRequest(request.id)
+                                    },
+                                    onReject = {
+                                        friendshipViewModel.rejectFriendRequest(request.id)
+                                    }
                                 )
                             }
-                        } else if (uiState.friends.isEmpty()) {
-                            item { FriendsEmptyState() }
-                        } else {
-                            items(
-                                items = uiState.friends,
-                                key = { it.id }
-                            ) { friendship ->
-                                val friend = if (friendship.senderId == uiState.currentUserId) {
-                                    friendship.receiver
-                                } else {
-                                    friendship.sender
-                                }
+                        }
 
-                                friend?.let {
-                                    var showMenu by remember { mutableStateOf(false) }
+                        item { Spacer(modifier = Modifier.height(16.dp)) }
+                    }
 
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .animateItem(
-                                                fadeInSpec = tween(800, easing = FastOutSlowInEasing),
-                                                fadeOutSpec = tween(500),
-                                                placementSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                                    stiffness = Spring.StiffnessLow
-                                                )
+                    item {
+                        SectionHeader(
+                            title = "Your Friends",
+                            count = uiState.friends.size.takeIf { it > 0 }
+                        )
+                    }
+
+                    if (uiState.isLoading && uiState.friends.isEmpty()) {
+                        items(5) {
+                            FriendItemShimmer()
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                thickness = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    } else if (uiState.friends.isEmpty()) {
+                        item { FriendsEmptyState() }
+                    } else {
+                        items(
+                            items = uiState.friends,
+                            key = { it.id }
+                        ) { friendship ->
+                            val friend = if (friendship.senderId == uiState.currentUserId) {
+                                friendship.receiver
+                            } else {
+                                friendship.sender
+                            }
+
+                            friend?.let {
+                                var showMenu by remember { mutableStateOf(false) }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateItem(
+                                            fadeInSpec = tween(800, easing = FastOutSlowInEasing),
+                                            fadeOutSpec = tween(500),
+                                            placementSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessLow
                                             )
-                                            .combinedClickable(
-                                                interactionSource = remember { MutableInteractionSource() },
-                                                indication = ripple(color = MaterialTheme.colorScheme.primary),
-                                                onClick = {
-                                                    navController.navigate("${Route.FriendDetail.route}/${it.id}")
+                                        )
+                                        .combinedClickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = ripple(color = MaterialTheme.colorScheme.primary),
+                                            onClick = {
+                                                navController.navigate("${Route.FriendDetail.route}/${it.id}")
+                                            },
+                                            onLongClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                showMenu = true
+                                            }
+                                        )
+                                ) {
+                                    Column {
+                                        FriendCard(friend = it)
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 20.dp),
+                                            thickness = 1.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                        )
+                                    }
+
+                                    // Menu aligned to the right side
+                                    Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp)) {
+                                        DropdownMenu(
+                                            expanded = showMenu,
+                                            onDismissRequest = { showMenu = false },
+                                            containerColor = MaterialTheme.colorScheme.surface,
+                                            shape = MaterialTheme.shapes.medium
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Remove Friend", color = MaterialTheme.colorScheme.error) },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Delete,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.error
+                                                    )
                                                 },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    showMenu = true
+                                                onClick = {
+                                                    showMenu = false
+                                                    friendshipToRemove = friendship
+                                                    showRemoveDialog = true
+                                                    friendshipViewModel.validateFriendRemoval(friendship.id)
                                                 }
                                             )
-                                    ) {
-                                        Column {
-                                            FriendCard(friend = it)
-                                            HorizontalDivider(
-                                                modifier = Modifier.padding(horizontal = 20.dp),
-                                                thickness = 1.dp,
-                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                            )
-                                        }
-
-                                        // Menu aligned to the right side
-                                        Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp)) {
-                                            DropdownMenu(
-                                                expanded = showMenu,
-                                                onDismissRequest = { showMenu = false },
-                                                containerColor = MaterialTheme.colorScheme.surface,
-                                                shape = MaterialTheme.shapes.medium
-                                            ) {
-                                                DropdownMenuItem(
-                                                    text = { Text("Remove Friend", color = MaterialTheme.colorScheme.error) },
-                                                    leadingIcon = {
-                                                        Icon(
-                                                            imageVector = Icons.Rounded.Delete,
-                                                            contentDescription = null,
-                                                            tint = MaterialTheme.colorScheme.error
-                                                        )
-                                                    },
-                                                    onClick = {
-                                                        showMenu = false
-                                                        friendshipToRemove = friendship
-                                                        showRemoveDialog = true
-                                                        friendshipViewModel.validateFriendRemoval(friendship.id)
-                                                    }
-                                                )
-                                            }
                                         }
                                     }
                                 }

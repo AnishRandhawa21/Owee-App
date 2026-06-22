@@ -1,34 +1,34 @@
 package com.anish.owee.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.repository.AuthRepository
 import com.anish.owee.data.repository.AuthRepositoryImpl
 import com.anish.owee.data.repository.FriendRequestRepository
 import com.anish.owee.data.repository.FriendRequestRepositoryImpl
+import com.anish.owee.data.repository.NotificationRepository
+import com.anish.owee.data.repository.NotificationRepositoryImpl
 import com.anish.owee.data.repository.SettlementRepositoryImpl
+import com.anish.owee.data.model.OweeNotification
 import com.anish.owee.utils.UpiPaymentManager
 import com.anish.owee.viewmodel.state.SettlementUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import android.content.Context
 
 class SettlementViewModel : ViewModel() {
 
-    private val authRepository: AuthRepository =
-        AuthRepositoryImpl()
+    private val authRepository: AuthRepository = AuthRepositoryImpl()
 
-    private val friendRequestRepository: FriendRequestRepository =
-        FriendRequestRepositoryImpl()
+    private val friendRequestRepository: FriendRequestRepository = FriendRequestRepositoryImpl()
 
-    private val _uiState =
-        MutableStateFlow(SettlementUiState())
+    private val notificationRepository: NotificationRepository = NotificationRepositoryImpl()
 
+    private val _uiState = MutableStateFlow(SettlementUiState())
 
-    val uiState: StateFlow<SettlementUiState> =
-        _uiState.asStateFlow()
+    val uiState: StateFlow<SettlementUiState> = _uiState.asStateFlow()
 
     fun loadSettlementData(
         userId: String,
@@ -36,50 +36,32 @@ class SettlementViewModel : ViewModel() {
         sourceType: String,
         sourceId: String
     ) {
-
         viewModelScope.launch {
-
-            _uiState.value =
-                _uiState.value.copy(
-                    isLoading = true,
-                    error = null
-                )
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                error = null
+            )
 
             try {
-
-                val user =
-                    authRepository.getUserById(
-                        userId
-                    )
-
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        user = user,
-                        amount = amount,
-                        sourceType = sourceType,
-                        sourceId = sourceId
-                    )
-
+                val user = authRepository.getUserById(userId)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    user = user,
+                    amount = amount,
+                    sourceType = sourceType,
+                    sourceId = sourceId
+                )
             } catch (e: Exception) {
-
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        error = e.message
-                    )
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message
+                )
             }
         }
     }
 
-    fun selectPaymentApp(
-        appName: String
-    ) {
-
-        _uiState.value =
-            _uiState.value.copy(
-                selectedApp = appName
-            )
+    fun selectPaymentApp(appName: String) {
+        _uiState.value = _uiState.value.copy(selectedApp = appName)
     }
 
     fun loadInstalledUpiApps(context: Context) {
@@ -90,57 +72,34 @@ class SettlementViewModel : ViewModel() {
         )
     }
 
-    fun setPaymentInProgress(
-        value: Boolean
-    ) {
-
-        _uiState.value =
-            _uiState.value.copy(
-                isPaymentInProgress = value
-            )
+    fun setPaymentInProgress(value: Boolean) {
+        _uiState.value = _uiState.value.copy(isPaymentInProgress = value)
     }
 
-    private val settlementRepository =
-        SettlementRepositoryImpl()
+    private val settlementRepository = SettlementRepositoryImpl()
 
     fun createSettlement() {
-
         viewModelScope.launch {
-
-            val currentUser =
-                authRepository.getCurrentUser()
-                    ?: return@launch
-
-            val targetUser =
-                _uiState.value.user
-                    ?: return@launch
-
+            val currentUser = authRepository.getCurrentUser() ?: return@launch
+            val targetUser = _uiState.value.user ?: return@launch
             val sourceType = _uiState.value.sourceType
             val sourceId = _uiState.value.sourceId
 
-            val result =
-                settlementRepository.createSettlement(
-                    sourceType = sourceType,
-                    sourceId = sourceId,
-                    payerId = currentUser.id,
-                    receiverId = targetUser.id,
-                    amount = _uiState.value.amount
-                )
+            val result = settlementRepository.createSettlement(
+                sourceType = sourceType,
+                sourceId = sourceId,
+                payerId = currentUser.id,
+                receiverId = targetUser.id,
+                amount = _uiState.value.amount
+            )
 
             result.onSuccess {
-
-                android.util.Log.d(
-                    "OWEE_SETTLEMENT",
-                    "Settlement created"
-                )
-
-                // SYNC DATABASE STATUSES (FIFO + Netting logic)
+                android.util.Log.d("OWEE_SETTLEMENT", "Settlement created")
                 if (sourceType == "FRIEND") {
                     try {
                         val friendId = targetUser.id
                         val requests = friendRequestRepository.getRequestsForFriend(friendId)
                         val settlements = settlementRepository.getSettlements("FRIEND", sourceId)
-
                         val currentUserId = currentUser.id
                         
                         val totalRequestedByMe = requests.filter { it.creatorId == currentUserId }.sumOf { it.amount }
@@ -183,38 +142,55 @@ class SettlementViewModel : ViewModel() {
                         android.util.Log.e("OWEE_SYNC", "Database status sync failed", e)
                     }
                 }
-
-                _uiState.value =
-                    _uiState.value.copy(
-                        settlementSuccess = true
-                    )
+                _uiState.value = _uiState.value.copy(settlementSuccess = true)
             }
 
             result.onFailure {
-
-                android.util.Log.e(
-                    "OWEE_SETTLEMENT",
-                    "Settlement failed",
-                    it
-                )
+                android.util.Log.e("OWEE_SETTLEMENT", "Settlement failed", it)
             }
         }
     }
 
     fun showConfirmationDialog() {
-
-        _uiState.value =
-            _uiState.value.copy(
-                showConfirmationDialog = true
-            )
+        _uiState.value = _uiState.value.copy(showConfirmationDialog = true)
     }
 
     fun dismissConfirmationDialog() {
+        _uiState.value = _uiState.value.copy(
+            showConfirmationDialog = false,
+            isPaymentInProgress = false
+        )
+    }
 
-        _uiState.value =
-            _uiState.value.copy(
-                showConfirmationDialog = false,
-                isPaymentInProgress = false
-            )
+    fun dismissTargetUpiDialog() {
+        _uiState.value = _uiState.value.copy(showTargetUpiMissingDialog = false)
+    }
+
+    fun handlePayClick(context: Context) {
+        val user = _uiState.value.user
+        val selectedPackage = _uiState.value.selectedApp
+        
+        if (user?.upiId.isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(showTargetUpiMissingDialog = true)
+            
+            // Send a notification to the person who is missing their UPI ID
+            viewModelScope.launch {
+                val currentUser = authRepository.getCurrentUser()
+                if (currentUser != null && user != null) {
+                    val notification = OweeNotification(
+                        senderId = currentUser.id,
+                        receiverId = user.id,
+                        type = "upi_alert",
+                        title = "UPI ID Missing",
+                        body = "${currentUser.displayName} tried to pay you. Add your UPI ID to receive it."
+                    )
+                    notificationRepository.sendNotification(notification)
+                }
+            }
+        } else if (selectedPackage != null) {
+            UpiPaymentManager.copyUpiId(context, user.upiId!!)
+            UpiPaymentManager.launchUpiApp(context, selectedPackage)
+            setPaymentInProgress(true)
+        }
     }
 }

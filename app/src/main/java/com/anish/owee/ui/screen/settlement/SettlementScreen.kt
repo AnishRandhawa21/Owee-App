@@ -94,6 +94,19 @@ fun SettlementScreen(
         )
     }
 
+    if (uiState.value.showTargetUpiMissingDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissTargetUpiDialog() },
+            title = { Text("UPI ID Missing") },
+            text = { Text("${uiState.value.user?.displayName} has not set their UPI ID yet. You can remind them to add it to their profile so you can pay them easily.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissTargetUpiDialog() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
     if (uiState.value.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -207,13 +220,7 @@ fun SettlementScreen(
             SettlementActionSection(
                 amount = uiState.value.amount,
                 onPayClick = {
-                    val user = uiState.value.user
-                    val selectedPackage = uiState.value.selectedApp
-                    if (user?.upiId != null && selectedPackage != null) {
-                        UpiPaymentManager.copyUpiId(context, user.upiId)
-                        UpiPaymentManager.launchUpiApp(context, selectedPackage)
-                        viewModel.setPaymentInProgress(true)
-                    }
+                    viewModel.handlePayClick(context)
                 }
             )
         }

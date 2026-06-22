@@ -84,17 +84,37 @@ fun CustomSettlementScreen(
     val amountToPay = uiState.amount.toDoubleOrNull() ?: 0.0
     val totalDebtAbs = abs(uiState.totalDebt)
     val hasAmount = amountToPay > 0.01
-    val exceedsDebt = !isOwedByThem && amountToPay > totalDebtAbs + 0.01
+    val exceedsDebt = amountToPay > totalDebtAbs + 0.01
 
     if (uiState.showConfirmationDialog) {
         PaymentConfirmationDialog(
             amount = amountToPay,
             onConfirm = {
+                val upiId = uiState.targetUser?.upiId
+                val selectedPackage = uiState.selectedApp
+                if (upiId != null && selectedPackage != null) {
+                    UpiPaymentManager.copyUpiId(context, upiId)
+                    UpiPaymentManager.launchUpiApp(context, selectedPackage)
+                    viewModel.setPaymentInProgress(true)
+                }
                 viewModel.createSettlements()
                 viewModel.dismissConfirmationDialog()
             },
             onDismiss = {
                 viewModel.dismissConfirmationDialog()
+            }
+        )
+    }
+
+    if (uiState.showUpiMissingDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissUpiDialog() },
+            title = { Text("Recipient UPI Missing") },
+            text = { Text("${uiState.targetUser?.displayName} has not set their UPI ID yet. We've notified them to add it so you can pay them.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissUpiDialog() }) {
+                    Text("OK")
+                }
             }
         )
     }
@@ -342,22 +362,16 @@ fun CustomSettlementScreen(
                     Button(
                         onClick = {
                             if (isOwedByThem) {
-                                // Remind Logic
+                                viewModel.sendReminder()
                             } else {
-                                val upiId = uiState.targetUser?.upiId
-                                val selectedPackage = uiState.selectedApp
-                                if (upiId != null && selectedPackage != null) {
-                                    UpiPaymentManager.copyUpiId(context, upiId)
-                                    UpiPaymentManager.launchUpiApp(context, selectedPackage)
-                                    viewModel.setPaymentInProgress(true)
-                                }
+                                viewModel.handlePaymentClick()
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(60.dp),
                         shape = MaterialTheme.shapes.medium,
-                        enabled = (isOwedByThem || (hasAmount && !exceedsDebt && uiState.selectedApp != null)) && !uiState.isLoading,
+                        enabled = hasAmount && !exceedsDebt && (isOwedByThem || uiState.selectedApp != null) && !uiState.isLoading,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isOwedByThem) MaterialTheme.colorScheme.secondary else if (exceedsDebt) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
                         )

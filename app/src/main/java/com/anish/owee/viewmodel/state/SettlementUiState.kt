@@ -14,5 +14,6 @@ data class SettlementUiState(
     val isPaymentInProgress: Boolean = false,
     val error: String? = null,
     val showConfirmationDialog: Boolean = false,
+    val showTargetUpiMissingDialog: Boolean = false,
     val settlementSuccess: Boolean = false
 )

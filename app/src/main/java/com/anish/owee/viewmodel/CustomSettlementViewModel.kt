@@ -29,7 +29,9 @@ data class CustomSettlementUiState(
     val isSuccess: Boolean = false,
     val error: String? = null,
     val isPaymentInProgress: Boolean = false,
-    val showConfirmationDialog: Boolean = false
+    val showConfirmationDialog: Boolean = false,
+    val showUpiMissingDialog: Boolean = false,
+    val currentUser: User? = null
 )
 
 class CustomSettlementViewModel(application: Application) : AndroidViewModel(application) {
@@ -40,6 +42,7 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
     private val friendshipRepository: FriendshipRepository = FriendshipRepositoryImpl()
     private val friendRequestRepository: FriendRequestRepository = FriendRequestRepositoryImpl()
     private val authRepository: AuthRepository = AuthRepositoryImpl()
+    private val notificationRepository: NotificationRepository = NotificationRepositoryImpl()
 
     private val _uiState = MutableStateFlow(CustomSettlementUiState())
     val uiState: StateFlow<CustomSettlementUiState> = _uiState.asStateFlow()
@@ -67,10 +70,12 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                 coroutineScope {
                     val currentUserId = groupRepository.getCurrentUserId() ?: return@coroutineScope
                     val userDeferred = async { authRepository.getUserById(targetUserId) }
+                    val currentUserDeferred = async { authRepository.getCurrentUser() }
                     val groupsDeferred = async { groupRepository.getGroupsWithMetadata() }
                     
                     val groups = groupsDeferred.await()
                     val user = userDeferred.await()
+                    val currentUser = currentUserDeferred.await()
 
                     val groupSourcesDeferred = groups.map { groupMetadata ->
                         async {
@@ -139,6 +144,7 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         targetUser = user,
+                        currentUser = currentUser,
                         totalDebt = total,
                         amount = if (total < -0.01) String.format(Locale.US, "%.2f", kotlin.math.abs(total)) else "",
                         sources = sortedSources
@@ -176,6 +182,38 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
         )
     }
 
+    fun dismissUpiDialog() {
+        _uiState.value = _uiState.value.copy(showUpiMissingDialog = false)
+    }
+
+    fun handlePaymentClick() {
+        val targetUser = _uiState.value.targetUser
+        val currentUser = _uiState.value.currentUser
+        
+        if (targetUser == null || currentUser == null) {
+            _uiState.value = _uiState.value.copy(error = "User profile not loaded. Please try again.")
+            return
+        }
+        
+        if (targetUser.upiId.isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(showUpiMissingDialog = true)
+            
+            // Send a notification to the target user
+            viewModelScope.launch {
+                val notification = com.anish.owee.data.model.OweeNotification(
+                    senderId = currentUser.id,
+                    receiverId = targetUser.id,
+                    type = "upi_alert",
+                    title = "UPI ID Missing",
+                    body = "${currentUser.displayName} tried to pay you. Add your UPI ID to receive it."
+                )
+                notificationRepository.sendNotification(notification)
+            }
+        } else {
+            showConfirmationDialog()
+        }
+    }
+
     fun createSettlements() {
         val amountToPay = _uiState.value.amount.toDoubleOrNull() ?: return
         val currentUserId = groupRepository.getCurrentUserId() ?: return
@@ -207,6 +245,33 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                 }
 
                 _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun sendReminder() {
+        val amount = _uiState.value.amount.toDoubleOrNull() ?: 0.0
+        val targetUserId = _uiState.value.targetUser?.id ?: return
+        val currentUserId = groupRepository.getCurrentUserId() ?: return
+        val currentUserName = _uiState.value.currentUser?.displayName ?: "Someone"
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            try {
+                val notification = com.anish.owee.data.model.OweeNotification(
+                    senderId = currentUserId,
+                    receiverId = targetUserId,
+                    type = "reminder",
+                    title = "Payment Reminder",
+                    body = "$currentUserName is reminding you about ₹${String.format(Locale.US, "%.2f", amount)}"
+                )
+                notificationRepository.sendNotification(notification)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isSuccess = true // This will close the screen. If you want to stay, change this.
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }

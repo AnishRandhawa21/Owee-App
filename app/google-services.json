@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "941398626552",
+    "project_id": "owee-2aa19",
+    "storage_bucket": "owee-2aa19.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:941398626552:android:114d7ff783fa3d840feb0d",
+        "android_client_info": {
+          "package_name": "com.anish.owee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBM06CD29eVA-lItgkiWoOMGBDdtOzjpdo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

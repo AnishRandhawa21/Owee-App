@@ -114,6 +114,14 @@ class PreferenceManager(context: Context) {
         }
     }
 
+    fun saveFcmToken(token: String) {
+        prefs.edit().putString("fcm_token", token).apply()
+    }
+
+    fun getFcmToken(): String? {
+        return prefs.getString("fcm_token", null)
+    }
+
     fun clearAll() {
         prefs.edit().clear().apply()
     }

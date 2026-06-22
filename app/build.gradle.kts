@@ -10,6 +10,7 @@ val webClientId = localProperties.getProperty("WEB_CLIENT_ID")
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 
     kotlin("plugin.serialization") version "2.0.21"
 }
@@ -113,5 +114,9 @@ dependencies {
 
 
     implementation("androidx.appcompat:appcompat:1.6.1")
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
 }

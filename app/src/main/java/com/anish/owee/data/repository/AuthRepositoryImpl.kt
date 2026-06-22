@@ -162,6 +162,25 @@ class AuthRepositoryImpl : AuthRepository {
         }
     }
 
+    override suspend fun updateFcmToken(token: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val userId = auth.currentUserOrNull()?.id ?: return@withContext Result.failure(Exception("User not logged in"))
+        try {
+            postgrest["users"].update(
+                {
+                    set("fcm_token", token)
+                }
+            ) {
+                filter {
+                    eq("id", userId)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update FCM token", e)
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getUserById(
         userId: String
     ): User? = withContext(Dispatchers.IO) {

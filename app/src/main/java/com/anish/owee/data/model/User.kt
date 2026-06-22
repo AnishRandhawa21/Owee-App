@@ -23,6 +23,9 @@ data class User(
     @SerialName("upi_id")
     val upiId: String? = null,
 
+    @SerialName("fcm_token")
+    val fcmToken: String? = null,
+
     @SerialName("created_at")
     val createdAt: String? = null,
 

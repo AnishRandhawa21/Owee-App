@@ -17,6 +17,10 @@ interface AuthRepository {
         upiId: String
     ): Result<Unit>
 
+    suspend fun updateFcmToken(
+        token: String
+    ): Result<Unit>
+
     suspend fun getUserById(
         userId: String
     ): User?

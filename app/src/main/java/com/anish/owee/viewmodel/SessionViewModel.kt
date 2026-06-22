@@ -8,6 +8,7 @@ import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.model.SessionState
 import com.anish.owee.data.repository.AuthRepository
 import com.anish.owee.data.repository.AuthRepositoryImpl
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +39,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 } else {
                     Log.d(TAG, "Session state transition: Authenticated")
                     _sessionState.value = SessionState.Authenticated
+                    updateFcmToken()
                 }
             } else {
                 Log.d(TAG, "Session state transition: Unauthenticated")
@@ -58,6 +60,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 } else {
                     Log.d(TAG, "Sign in success: Authenticated")
                     _sessionState.value = SessionState.Authenticated
+                    updateFcmToken()
                 }
             } else {
                 Log.d(TAG, "Sign in failed: Unauthenticated")
@@ -91,6 +94,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             if (result.isSuccess) {
                 Log.d(TAG, "Profile creation success: Authenticated")
                 _sessionState.value = SessionState.Authenticated
+                updateFcmToken()
             }
             onResult(result)
         }
@@ -98,5 +102,21 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     fun usernameSetupCompleted() {
         _sessionState.value = SessionState.Authenticated
+        updateFcmToken()
+    }
+
+    private fun updateFcmToken() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                Log.d(TAG, "FCM Token retrieved: $token")
+                viewModelScope.launch {
+                    authRepository.updateFcmToken(token)
+                    preferenceManager.saveFcmToken(token)
+                }
+            } else {
+                Log.w(TAG, "Fetching FCM registration token failed", task.exception)
+            }
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.anish.owee
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,6 +20,7 @@ import com.anish.owee.navigation.Route
 import com.anish.owee.ui.components.BottomNavigationBar
 import com.anish.owee.viewmodel.SessionViewModel
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainScreen(
     sessionViewModel: SessionViewModel
@@ -63,13 +66,16 @@ fun MainScreen(
     ) { paddingValues ->
         // To achieve the "Floating" effect where content flows behind the bar,
         // we don't apply the bottom padding from the scaffold to the MainNavGraph.
-        Box(modifier = Modifier.fillMaxSize()) {
-            MainNavGraph(
-                navController = navController,
-                sessionViewModel = sessionViewModel,
-                snackbarHostState = snackbarHostState,
-                modifier = Modifier.fillMaxSize()
-            )
+        SharedTransitionLayout {
+            Box(modifier = Modifier.fillMaxSize()) {
+                MainNavGraph(
+                    navController = navController,
+                    sessionViewModel = sessionViewModel,
+                    snackbarHostState = snackbarHostState,
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
 }

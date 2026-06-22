@@ -38,10 +38,12 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun GroupsScreen(
     snackbarHostState: SnackbarHostState,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onCreateGroupClick: () -> Unit = {},
     onGroupClick: (String) -> Unit = {}
 ) {
@@ -311,13 +313,27 @@ fun GroupsScreen(
                                         }
                                     )
                             ) {
-                                Column {
-                                    GroupItemPremium(groupWithMetadata = groupMetadata)
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 20.dp),
-                                        thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                    )
+                                with(sharedTransitionScope) {
+                                    Box(
+                                        modifier = Modifier.sharedBounds(
+                                            rememberSharedContentState(key = "group_${groupMetadata.group.id}"),
+                                            animatedVisibilityScope = animatedVisibilityScope,
+                                            boundsTransform = { _, _ ->
+                                                tween(com.anish.owee.animations.NavAnimations.DURATION, easing = EaseInOutQuart)
+                                            },
+                                            zIndexInOverlay = 1f,
+                                            clipInOverlayDuringTransition = OverlayClip(androidx.compose.foundation.shape.RoundedCornerShape(0.dp))
+                                        )
+                                    ) {
+                                        Column {
+                                            GroupItemPremium(groupWithMetadata = groupMetadata)
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(horizontal = 20.dp),
+                                                thickness = 1.dp,
+                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                    }
                                 }
 
                                 Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp)) {
@@ -352,18 +368,25 @@ fun GroupsScreen(
             }
         }
 
-        FloatingActionButton(
-            onClick = onCreateGroupClick,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 24.dp, bottom = 110.dp)
-                .size(64.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = MaterialTheme.shapes.medium,
-            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 6.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(32.dp))
+        with(sharedTransitionScope) {
+            FloatingActionButton(
+                onClick = onCreateGroupClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 24.dp, bottom = 110.dp)
+                    .size(64.dp)
+                    .sharedElement(
+                        rememberSharedContentState(key = "fab_create_group"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        zIndexInOverlay = 2f
+                    ),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = MaterialTheme.shapes.medium,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 6.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(32.dp))
+            }
         }
     }
 }

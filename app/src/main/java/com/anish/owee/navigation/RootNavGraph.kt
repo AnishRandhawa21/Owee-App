@@ -13,6 +13,7 @@ import com.anish.owee.MainScreen
 import com.anish.owee.data.model.SessionState
 import com.anish.owee.ui.screen.auth.SplashScreen
 import com.anish.owee.viewmodel.SessionViewModel
+import com.anish.owee.animations.NavAnimations
 
 @Composable
 fun RootNavGraph(
@@ -56,7 +57,11 @@ fun RootNavGraph(
     NavHost(
         navController = navController,
         startDestination = Route.Splash.route,
-        route = Graph.ROOT
+        route = Graph.ROOT,
+        enterTransition = NavAnimations.enterTransition,
+        exitTransition = NavAnimations.exitTransition,
+        popEnterTransition = NavAnimations.popEnterTransition,
+        popExitTransition = NavAnimations.popExitTransition
     ) {
         composable(Route.Splash.route) {
             SplashScreen(

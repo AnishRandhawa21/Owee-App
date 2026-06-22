@@ -1,38 +1,26 @@
 package com.anish.owee.ui.screen.settlement
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anish.owee.ui.screen.settlement.components.RecipientCard
 import com.anish.owee.ui.screen.settlement.components.SettlementActionSection
 import com.anish.owee.ui.screen.settlement.components.SettlementInfoCard
-import com.anish.owee.viewmodel.SettlementViewModel
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.anish.owee.utils.UpiPaymentManager
+import com.anish.owee.viewmodel.SettlementViewModel
 
 @Composable
 fun SettlementScreen(
@@ -55,12 +43,7 @@ fun SettlementScreen(
     }
 
     LaunchedEffect(userId, amount, sourceType, sourceId) {
-        viewModel.loadSettlementData(
-            userId = userId,
-            amount = amount,
-            sourceType = sourceType,
-            sourceId = sourceId
-        )
+        viewModel.loadSettlementData(userId, amount, sourceType, sourceId)
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -70,9 +53,7 @@ fun SettlementScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     if (uiState.value.showConfirmationDialog) {
@@ -93,99 +74,45 @@ fun SettlementScreen(
     }
 
     if (uiState.value.isLoading) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            CircularProgressIndicator()
-        }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
 
-    if (uiState.value.error != null) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = uiState.value.error!!, color = MaterialTheme.colorScheme.error)
-        }
-        return
-    }
-
-    val user = uiState.value.user
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-    ) {
-        // Header
+    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, start = 8.dp, end = 20.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, start = 8.dp)
         ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-            Text(
-                text = "Settlement",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 22.sp
-                ),
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            IconButton(onClick = onBackClick) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
+            Text("Settlement", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(Modifier.height(32.dp))
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-        ) {
-            if (user != null) {
-                RecipientCard(
-                    displayName = user.displayName,
-                    username = user.username,
-                    upiId = user.upiId
-                )
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+            uiState.value.user?.let { user ->
+                RecipientCard(displayName = user.displayName, username = user.username, upiId = user.upiId)
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            SettlementInfoCard(
-                amount = uiState.value.amount,
-                sourceType = uiState.value.sourceType
-            )
+            Spacer(Modifier.height(24.dp))
+            SettlementInfoCard(amount = uiState.value.amount, sourceType = uiState.value.sourceType)
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(Modifier.weight(1f))
 
-        Box(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Box(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
             SettlementActionSection(
                 amount = uiState.value.amount,
                 onPayClick = {
-                    val currentUser = uiState.value.user ?: return@SettlementActionSection
-                    val upiId = currentUser.upiId ?: return@SettlementActionSection
-                    val uri = UpiPaymentManager.buildUpiUri(
-                        upiId = upiId,
-                        payeeName = currentUser.displayName,
-                        amount = uiState.value.amount
-                    )
-                    val intent = UpiPaymentManager.createIntent(uri)
-                    val chooser = android.content.Intent.createChooser(intent, "Pay with")
-                    viewModel.setPaymentInProgress(true)
-                    context.startActivity(chooser)
+                    val user = uiState.value.user
+                    if (user?.upiId != null) {
+                        UpiPaymentManager.launchUpiPayment(
+                            context = context,
+                            upiId = user.upiId,
+                            payeeName = user.displayName,
+                            amount = uiState.value.amount
+                        )
+                        viewModel.setPaymentInProgress(true)
+                    }
                 }
             )
         }

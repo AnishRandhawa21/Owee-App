@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
@@ -40,11 +41,17 @@ import kotlin.math.abs
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.EaseInOutQuart
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun GroupDetailScreen(
     groupId: String,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onAddExpenseClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     onSettlementClick: (
@@ -76,189 +83,204 @@ fun GroupDetailScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Animated Status Bar Loading
-        AnimatedVisibility(
-            visible = uiState.isLoading,
-            enter = fadeIn(tween(400)) + expandVertically(tween(400)),
-            exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
-            modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
-        ) {
-            LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth().height(3.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.Transparent
-            )
-        }
-
-        Column(
+    with(sharedTransitionScope) {
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-        ) {
-            // Fixed Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, start = 8.dp, end = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-                Text(
-                    text = uiState.group?.name ?: "Group Details",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
+                .sharedBounds(
+                    rememberSharedContentState(key = "group_$groupId"),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    zIndexInOverlay = 1f,
+                    clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(0.dp)),
+                    boundsTransform = { _, _ ->
+                        tween(com.anish.owee.animations.NavAnimations.DURATION, easing = EaseInOutQuart)
+                    }
                 )
-
-                if (uiState.members.isNotEmpty()) {
-                    GroupMemberStack(members = uiState.members)
-                }
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // Animated Status Bar Loading
+            AnimatedVisibility(
+                visible = uiState.isLoading,
+                enter = fadeIn(tween(400)) + expandVertically(tween(400)),
+                exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
+                modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
+            ) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.Transparent
+                )
             }
 
-            PullToRefreshBox(
-                isRefreshing = uiState.isLoading,
-                onRefresh = { uiState.group?.id?.let { viewModel.loadGroupData(it) } },
-                modifier = Modifier.fillMaxSize(),
-                indicator = { } // Remove default spinner
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                // Fixed Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, start = 8.dp, end = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (uiState.group != null) {
-                        // Summary Card
-                        item {
-                            GroupSummaryPremium(
-                                balances = uiState.balances,
-                                totalSpent = uiState.expenses.sumOf { it.amount }
-                            )
-                        }
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Text(
+                        text = uiState.group?.name ?: "Group Details",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 22.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                        // Balances Section
-                        item {
-                            SectionHeader("Group Balances")
-                        }
+                    if (uiState.members.isNotEmpty()) {
+                        GroupMemberStack(members = uiState.members)
+                    }
+                }
 
-                        if (uiState.balances.isEmpty()) {
+                PullToRefreshBox(
+                    isRefreshing = uiState.isLoading,
+                    onRefresh = { uiState.group?.id?.let { viewModel.loadGroupData(it) } },
+                    modifier = Modifier.fillMaxSize(),
+                    indicator = { } // Remove default spinner
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        if (uiState.group != null) {
+                            // Summary Card
                             item {
-                                EmptyStateMessage("No balances yet. Everyone is settled up!")
+                                GroupSummaryPremium(
+                                    balances = uiState.balances,
+                                    totalSpent = uiState.expenses.sumOf { it.amount }
+                                )
                             }
-                        } else {
-                            items(
-                                items = uiState.balances,
-                                key = { "bal_${it.userId}" }
-                            ) { balance ->
-                                val member = uiState.members.firstOrNull { it.id == balance.userId }
-                                Box(modifier = Modifier.animateItem()) {
-                                    BalanceItemFlat(
-                                        memberName = member?.displayName ?: "Unknown",
-                                        photoUrl = member?.photoUrl,
-                                        amount = balance.amount,
-                                        onClick = { selectedBalanceUserId = balance.userId }
-                                    )
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 20.dp),
-                                        thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                    )
+
+                            // Balances Section
+                            item {
+                                SectionHeader("Group Balances")
+                            }
+
+                            if (uiState.balances.isEmpty()) {
+                                item {
+                                    EmptyStateMessage("No balances yet. Everyone is settled up!")
+                                }
+                            } else {
+                                items(
+                                    items = uiState.balances,
+                                    key = { "bal_${it.userId}" }
+                                ) { balance ->
+                                    val member = uiState.members.firstOrNull { it.id == balance.userId }
+                                    Box(modifier = Modifier.animateItem()) {
+                                        BalanceItemFlat(
+                                            memberName = member?.displayName ?: "Unknown",
+                                            photoUrl = member?.photoUrl,
+                                            amount = balance.amount,
+                                            onClick = { selectedBalanceUserId = balance.userId }
+                                        )
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 20.dp),
+                                            thickness = 1.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                        )
+                                    }
                                 }
                             }
-                        }
 
-                        // Expenses Section
-                        item {
-                            SectionHeader("Recent Expenses")
-                        }
-
-                        if (uiState.expenses.isEmpty()) {
+                            // Expenses Section
                             item {
-                                EmptyStateMessage("No expenses added yet.")
+                                SectionHeader("Recent Expenses")
                             }
-                        } else {
-                            items(
-                                items = uiState.expenses,
-                                key = { it.id }
-                            ) { expense ->
-                                val payerName = uiState.members
-                                    .firstOrNull { it.id == expense.payerId }
-                                    ?.displayName ?: "Unknown"
 
-                                Box(modifier = Modifier.animateItem()) {
-                                    ExpenseItemFlat(
-                                        expense = expense,
-                                        payerName = payerName,
-                                        onClick = { selectedExpense = expense }
-                                    )
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 20.dp),
-                                        thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                    )
+                            if (uiState.expenses.isEmpty()) {
+                                item {
+                                    EmptyStateMessage("No expenses added yet.")
+                                }
+                            } else {
+                                items(
+                                    items = uiState.expenses,
+                                    key = { it.id }
+                                ) { expense ->
+                                    val payerName = uiState.members
+                                        .firstOrNull { it.id == expense.payerId }
+                                        ?.displayName ?: "Unknown"
+
+                                    Box(modifier = Modifier.animateItem()) {
+                                        ExpenseItemFlat(
+                                            expense = expense,
+                                            payerName = payerName,
+                                            onClick = { selectedExpense = expense }
+                                        )
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 20.dp),
+                                            thickness = 1.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                        )
+                                    }
                                 }
                             }
-                        }
 
-                        // Branding Footer
-                        item {
-                            Spacer(modifier = Modifier.height(32.dp))
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 20.dp, bottom = 8.dp),
-                                horizontalAlignment = Alignment.Start
-                            ) {
-                                Text(
-                                    text = "OWEE",
-                                    style = MaterialTheme.typography.displayLarge.copy(
-                                        fontWeight = FontWeight.Black,
-                                        letterSpacing = 2.sp,
-                                        fontSize = 64.sp
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
-                                )
-                                Text(
-                                    text = "SPLIT SMART • LIVE BETTER",
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = 1.sp
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                                    modifier = Modifier.offset(y = (-10).dp)
-                                )
+                            // Branding Footer
+                            item {
+                                Spacer(modifier = Modifier.height(32.dp))
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 20.dp, bottom = 8.dp),
+                                    horizontalAlignment = Alignment.Start
+                                ) {
+                                    Text(
+                                        text = "OWEE",
+                                        style = MaterialTheme.typography.displayLarge.copy(
+                                            fontWeight = FontWeight.Black,
+                                            letterSpacing = 2.sp,
+                                            fontSize = 64.sp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                                    )
+                                    Text(
+                                        text = "SPLIT SMART • LIVE BETTER",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            letterSpacing = 1.sp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                        modifier = Modifier.offset(y = (-10).dp)
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        // FAB - Matching Groups Screen
-        FloatingActionButton(
-            onClick = { onAddExpenseClick(groupId) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 24.dp, bottom = 110.dp) // Adjusted for floating nav
-                .size(64.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = MaterialTheme.shapes.medium,
-            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 6.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Expense", modifier = Modifier.size(32.dp))
+            // FAB - Matching Groups Screen
+            FloatingActionButton(
+                onClick = { onAddExpenseClick(groupId) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 24.dp, bottom = 110.dp) // Adjusted for floating nav
+                    .size(64.dp)
+                    .sharedElement(
+                        rememberSharedContentState(key = "fab_add_expense"),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    ),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = MaterialTheme.shapes.medium,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 6.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Expense", modifier = Modifier.size(32.dp))
+            }
         }
     }
 
@@ -286,6 +308,8 @@ fun GroupDetailScreen(
                 expenses = uiState.expenses,
                 participantsByExpense = uiState.participantsByExpense,
                 settlements = uiState.settlements,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
                 onDismiss = { selectedBalanceUserId = null },
                 onSettleClick = { memberId, amount ->
 

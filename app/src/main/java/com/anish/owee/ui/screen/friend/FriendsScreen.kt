@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
@@ -46,12 +47,17 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.input.ImeAction
 import com.anish.owee.data.model.Friendship
 import com.anish.owee.ui.screen.friend.components.SearchResultStatus
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun FriendsScreen(
     navController: NavHostController,
     snackbarHostState: SnackbarHostState,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     friendshipViewModel: FriendshipViewModel = viewModel()
 ) {
     val uiState by friendshipViewModel.uiState.collectAsStateWithLifecycle()
@@ -394,13 +400,27 @@ fun FriendsScreen(
                                             }
                                         )
                                 ) {
-                                    Column {
-                                        FriendCard(friend = it)
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 20.dp),
-                                            thickness = 1.dp,
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                        )
+                                    with(sharedTransitionScope) {
+                                        Box(
+                                            modifier = Modifier.sharedBounds(
+                                                rememberSharedContentState(key = "friend_${it.id}"),
+                                                animatedVisibilityScope = animatedVisibilityScope,
+                                                boundsTransform = { _, _ ->
+                                                    tween(com.anish.owee.animations.NavAnimations.DURATION, easing = EaseInOutQuart)
+                                                },
+                                                zIndexInOverlay = 1f,
+                                                clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(0.dp))
+                                            )
+                                        ) {
+                                            Column {
+                                                FriendCard(friend = it)
+                                                HorizontalDivider(
+                                                    modifier = Modifier.padding(horizontal = 20.dp),
+                                                    thickness = 1.dp,
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                                )
+                                            }
+                                        }
                                     }
 
                                     // Menu aligned to the right side

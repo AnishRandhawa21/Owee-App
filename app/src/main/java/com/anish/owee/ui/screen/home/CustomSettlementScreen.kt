@@ -278,16 +278,16 @@ fun CustomSettlementScreen(
                                 // Remind Logic (Temporary clipboard copy)
                                 android.util.Log.d("OWEE", "Reminding user...")
                             } else {
-                                // Payment Logic
-                                val upiId = uiState.targetUser?.upiId ?: return@Button
-                                val uri = UpiPaymentManager.buildUpiUri(
-                                    upiId = upiId,
-                                    payeeName = uiState.targetUser?.displayName ?: "User",
-                                    amount = amountToPay
-                                )
-                                val intent = UpiPaymentManager.createIntent(uri)
-                                viewModel.setPaymentInProgress(true)
-                                context.startActivity(android.content.Intent.createChooser(intent, "Pay with"))
+                                val upiId = uiState.targetUser?.upiId
+                                if (upiId != null) {
+                                    UpiPaymentManager.launchUpiPayment(
+                                        context = context,
+                                        upiId = upiId,
+                                        payeeName = uiState.targetUser?.displayName ?: "User",
+                                        amount = amountToPay
+                                    )
+                                    viewModel.setPaymentInProgress(true)
+                                }
                             }
                         },
                         modifier = Modifier

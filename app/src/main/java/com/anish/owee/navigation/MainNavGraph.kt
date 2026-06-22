@@ -18,17 +18,28 @@ import com.anish.owee.ui.screen.home.HomeScreen
 import com.anish.owee.ui.screen.profile.ProfileScreen
 import com.anish.owee.viewmodel.SessionViewModel
 import com.anish.owee.ui.screen.settlement.SettlementScreen
+import com.anish.owee.animations.NavAnimations
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
+
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainNavGraph(
     navController: NavHostController,
     sessionViewModel: SessionViewModel,
     snackbarHostState: SnackbarHostState,
+    sharedTransitionScope: SharedTransitionScope,
     modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
         startDestination = Route.Home.route,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = NavAnimations.enterTransition,
+        exitTransition = NavAnimations.exitTransition,
+        popEnterTransition = NavAnimations.popEnterTransition,
+        popExitTransition = NavAnimations.popExitTransition
     ) {
         composable(Route.Home.route) {
             HomeScreen(
@@ -41,7 +52,9 @@ fun MainNavGraph(
         composable(Route.Friends.route) {
             FriendsScreen(
                 navController = navController,
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this
             )
         }
         composable(
@@ -55,6 +68,8 @@ fun MainNavGraph(
 
             FriendDetailScreen(
                 friendId = friendId,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this,
                 onBackClick = {
                     navController.popBackStack()
                 },
@@ -97,6 +112,8 @@ fun MainNavGraph(
         composable(Route.Groups.route) {
             GroupsScreen(
                 snackbarHostState = snackbarHostState,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this,
                 onCreateGroupClick = {
                     navController.navigate(
                         Route.CreateGroup.route
@@ -121,6 +138,8 @@ fun MainNavGraph(
 
             CreateExpenseScreen(
                 groupId = groupId,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this,
                 onBack = {
                     navController.popBackStack()
                 }
@@ -137,6 +156,8 @@ fun MainNavGraph(
 
             GroupDetailScreen(
                 groupId = groupId,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this,
                 onAddExpenseClick = { selectedGroupId ->
                     navController.navigate(
                         "${Route.CreateExpense.route}/$selectedGroupId"
@@ -158,6 +179,8 @@ fun MainNavGraph(
         }
         composable(Route.CreateGroup.route) {
             CreateGroupScreen(
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = this,
                 onBack = {
                     navController.popBackStack()
                 }

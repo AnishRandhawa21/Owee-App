@@ -22,8 +22,11 @@ import com.anish.owee.data.model.ExpenseParticipant
 import com.anish.owee.data.model.Settlement
 import com.anish.owee.viewmodel.MemberBalanceViewModel
 import kotlin.math.abs
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MemberBalanceBottomSheet(
     memberName: String,
@@ -32,6 +35,8 @@ fun MemberBalanceBottomSheet(
     expenses: List<Expense>,
     participantsByExpense: Map<String, List<ExpenseParticipant>>,
     settlements: List<Settlement>,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onDismiss: () -> Unit,
     onSettleClick: (
         memberId: String,

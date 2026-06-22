@@ -19,13 +19,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anish.owee.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+import com.anish.owee.ui.theme.*
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun SettlementBottomSheet(
     balance: Double,
     requestedByMe: Double,
     requestedByFriend: Double,
     friendName: String,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onDismiss: () -> Unit,
     onSettleNow: (Double) -> Unit
 ) {
@@ -45,11 +52,12 @@ fun SettlementBottomSheet(
                 .padding(bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // ... (rest of summary)
             Text(
                 text = "Settlement Summary",
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.5).sp
+                    letterSpacing = (-1).sp
                 ),
                 color = MaterialTheme.colorScheme.onSurface
             )

@@ -13,6 +13,7 @@ sealed class Route(val route: String) {
     data object Home : Route("home")
     data object Friends : Route("friends")
     data object FriendDetail : Route("friend_detail")
+    data object FriendHistory : Route("friend_history")
     data object CreateFriendRequest : Route("create_friend_request")
     data object Groups : Route("groups")
 

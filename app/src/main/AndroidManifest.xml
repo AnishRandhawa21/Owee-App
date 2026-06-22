@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.INTERNET"></uses-permission>
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="upi" />
         </intent>
+        <!-- Adding specific packages as a fallback to ensure they are visible -->
+        <package android:name="com.google.android.apps.nbu.paisa.user" />
+        <package android:name="com.phonepe.app" />
+        <package android:name="net.one97.paytm" />
+        <package android:name="in.org.npci.upiapp" />
+        <package android:name="com.amazon.mShop.android.shopping" />
+        <package android:name="com.supermoney.app" />
     </queries>
 
     <application
@@ -28,10 +35,10 @@
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>

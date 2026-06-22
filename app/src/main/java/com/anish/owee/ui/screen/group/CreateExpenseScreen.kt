@@ -55,6 +55,7 @@ fun CreateExpenseScreen(
     var triedToSubmit by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val shakeOffset = remember { Animatable(0f) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(groupId) {
         viewModel.loadMembers(groupId)
@@ -62,7 +63,9 @@ fun CreateExpenseScreen(
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
-            onBack()
+            android.widget.Toast.makeText(context, "Expense added successfully!", android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.resetSuccess()
+            triedToSubmit = false
         }
     }
 
@@ -148,7 +151,9 @@ fun CreateExpenseScreen(
                         BasicTextField(
                             value = uiState.amount,
                             onValueChange = {
-                                if (it.length <= 9) viewModel.updateAmount(it)
+                                if (it.length <= 9 && (it.isEmpty() || it.toDoubleOrNull() != null && it.toDouble() >= 0)) {
+                                    viewModel.updateAmount(it)
+                                }
                             },
                             modifier = Modifier.width(IntrinsicSize.Min),
                             textStyle = MaterialTheme.typography.displayLarge.copy(
@@ -441,7 +446,11 @@ fun ParticipantSelectionItem(
         if (isCustomSplit && isSelected) {
             TextField(
                 value = customAmount,
-                onValueChange = onAmountChange,
+                onValueChange = {
+                    if (it.isEmpty() || it.toDoubleOrNull() != null && it.toDouble() >= 0) {
+                        onAmountChange(it)
+                    }
+                },
                 modifier = Modifier.width(80.dp),
                 placeholder = { Text("0", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)) },
                 prefix = { Text("₹", style = MaterialTheme.typography.bodyMedium) },

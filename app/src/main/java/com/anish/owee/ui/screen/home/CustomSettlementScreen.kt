@@ -1,8 +1,13 @@
 package com.anish.owee.ui.screen.home
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,27 +22,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.anish.owee.ui.components.PaymentConfirmationDialog
 import com.anish.owee.utils.UpiPaymentManager
 import com.anish.owee.viewmodel.CustomSettlementViewModel
 import com.anish.owee.ui.theme.*
 import java.util.Locale
 import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomSettlementScreen(
     userId: String,
@@ -46,7 +54,6 @@ fun CustomSettlementScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(userId) {
         viewModel.loadUserDebts(userId)
@@ -58,10 +65,13 @@ fun CustomSettlementScreen(
         }
     }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && uiState.isPaymentInProgress) {
-                viewModel.showConfirmationDialog()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (uiState.isPaymentInProgress) {
+                    viewModel.showConfirmationDialog()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -70,28 +80,24 @@ fun CustomSettlementScreen(
         }
     }
 
-    if (uiState.showConfirmationDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissConfirmationDialog() },
-            title = { Text("Payment Status") },
-            text = { Text("Was the payment completed successfully?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.createSettlements()
-                    viewModel.dismissConfirmationDialog()
-                }) { Text("YES") }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissConfirmationDialog() }) { Text("NO") }
-            }
-        )
-    }
-
     val isOwedByThem = uiState.totalDebt > 0.01
     val amountToPay = uiState.amount.toDoubleOrNull() ?: 0.0
     val totalDebtAbs = abs(uiState.totalDebt)
     val hasAmount = amountToPay > 0.01
     val exceedsDebt = !isOwedByThem && amountToPay > totalDebtAbs + 0.01
+
+    if (uiState.showConfirmationDialog) {
+        PaymentConfirmationDialog(
+            amount = amountToPay,
+            onConfirm = {
+                viewModel.createSettlements()
+                viewModel.dismissConfirmationDialog()
+            },
+            onDismiss = {
+                viewModel.dismissConfirmationDialog()
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -145,12 +151,12 @@ fun CustomSettlementScreen(
                     .padding(horizontal = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(Modifier.height(48.dp))
+                Spacer(Modifier.height(32.dp))
 
                 // User Profile
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(64.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
@@ -164,14 +170,14 @@ fun CustomSettlementScreen(
                     } else {
                         Text(
                             text = uiState.targetUser?.displayName?.take(1)?.uppercase() ?: "?",
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                             modifier = Modifier.align(Alignment.Center),
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Text(
                     text = if (isOwedByThem) "${uiState.targetUser?.displayName} owes you" else "You owe ${uiState.targetUser?.displayName}",
@@ -186,7 +192,7 @@ fun CustomSettlementScreen(
                     )
                 )
 
-                Spacer(Modifier.height(64.dp))
+                Spacer(Modifier.height(32.dp))
 
                 // Amount Input
                 Row(
@@ -196,18 +202,22 @@ fun CustomSettlementScreen(
                     Text(
                         text = "₹",
                         style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = 56.sp,
+                            fontSize = 48.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = if (hasAmount) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         )
                     )
-                    
+
                     BasicTextField(
                         value = uiState.amount,
-                        onValueChange = { viewModel.updateAmount(it) },
+                        onValueChange = {
+                            if (it.isEmpty() || it.toDoubleOrNull() != null && it.toDouble() >= 0) {
+                                viewModel.updateAmount(it)
+                            }
+                        },
                         modifier = Modifier.width(IntrinsicSize.Min),
                         textStyle = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = 56.sp,
+                            fontSize = 48.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = if (exceedsDebt) Error else MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Start
@@ -221,7 +231,7 @@ fun CustomSettlementScreen(
                                     Text(
                                         text = "0",
                                         style = MaterialTheme.typography.displayLarge.copy(
-                                            fontSize = 56.sp,
+                                            fontSize = 48.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                         )
@@ -233,7 +243,7 @@ fun CustomSettlementScreen(
                     )
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
                 AnimatedVisibility(visible = exceedsDebt) {
                     Text(
@@ -244,7 +254,7 @@ fun CustomSettlementScreen(
                     )
                 }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(16.dp))
 
                 // Quick Selection Buttons
                 Row(
@@ -263,6 +273,63 @@ fun CustomSettlementScreen(
                     )
                 }
 
+                Spacer(Modifier.height(32.dp))
+
+                // UPI App Selector
+                if (!isOwedByThem) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Select UPI App",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(uiState.installedUpiApps) { app ->
+                                val isSelected = uiState.selectedApp == app.packageName
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .width(64.dp)
+                                        .clickable { viewModel.selectPaymentApp(app.packageName) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(52.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                            .border(
+                                                width = if (isSelected) 2.dp else 1.dp,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                                shape = CircleShape
+                                            )
+                                            .padding(if (isSelected) 4.dp else 0.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            bitmap = app.icon.toBitmap().asImageBitmap(),
+                                            contentDescription = app.name,
+                                            modifier = Modifier.size(36.dp).clip(CircleShape)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = app.name,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(Modifier.weight(1f))
 
                 // Bottom Action
@@ -275,17 +342,13 @@ fun CustomSettlementScreen(
                     Button(
                         onClick = {
                             if (isOwedByThem) {
-                                // Remind Logic (Temporary clipboard copy)
-                                android.util.Log.d("OWEE", "Reminding user...")
+                                // Remind Logic
                             } else {
                                 val upiId = uiState.targetUser?.upiId
-                                if (upiId != null) {
-                                    UpiPaymentManager.launchUpiPayment(
-                                        context = context,
-                                        upiId = upiId,
-                                        payeeName = uiState.targetUser?.displayName ?: "User",
-                                        amount = amountToPay
-                                    )
+                                val selectedPackage = uiState.selectedApp
+                                if (upiId != null && selectedPackage != null) {
+                                    UpiPaymentManager.copyUpiId(context, upiId)
+                                    UpiPaymentManager.launchUpiApp(context, selectedPackage)
                                     viewModel.setPaymentInProgress(true)
                                 }
                             }
@@ -294,7 +357,7 @@ fun CustomSettlementScreen(
                             .fillMaxWidth()
                             .height(60.dp),
                         shape = MaterialTheme.shapes.medium,
-                        enabled = (isOwedByThem || (hasAmount && !exceedsDebt)) && !uiState.isLoading,
+                        enabled = (isOwedByThem || (hasAmount && !exceedsDebt && uiState.selectedApp != null)) && !uiState.isLoading,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isOwedByThem) MaterialTheme.colorScheme.secondary else if (exceedsDebt) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
                         )

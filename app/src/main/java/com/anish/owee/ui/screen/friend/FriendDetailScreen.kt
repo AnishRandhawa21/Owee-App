@@ -52,6 +52,7 @@ fun FriendDetailScreen(
     onBackClick: () -> Unit = {},
     onRequestMoneyClick: (String, String) -> Unit,
     onSettlementClick: (String, String, Double) -> Unit,
+    onViewHistoryClick: (String, String) -> Unit = { _, _ -> },
     friendshipViewModel: FriendshipViewModel = viewModel(),
     friendRequestViewModel: FriendRequestViewModel = viewModel()
 ) {
@@ -298,7 +299,7 @@ fun FriendDetailScreen(
                                 
                                 item {
                                     TextButton(
-                                        onClick = { /* History */ },
+                                        onClick = { onViewHistoryClick(friend.id, friend.displayName) },
                                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                                     ) {
                                         Text("View Full History", fontWeight = FontWeight.Bold, color = TextSecondary)

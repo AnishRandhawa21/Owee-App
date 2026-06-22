@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.model.User
 import com.anish.owee.data.repository.*
 import com.anish.owee.domain.GroupBalanceCalculator
+import com.anish.owee.utils.UpiApp
+import com.anish.owee.utils.UpiPaymentManager
 import com.anish.owee.viewmodel.state.DebtSource
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -22,6 +24,8 @@ data class CustomSettlementUiState(
     val totalDebt: Double = 0.0,
     val amount: String = "",
     val sources: List<DebtSource> = emptyList(),
+    val installedUpiApps: List<UpiApp> = emptyList(),
+    val selectedApp: String? = null,
     val isSuccess: Boolean = false,
     val error: String? = null,
     val isPaymentInProgress: Boolean = false,
@@ -39,6 +43,22 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
 
     private val _uiState = MutableStateFlow(CustomSettlementUiState())
     val uiState: StateFlow<CustomSettlementUiState> = _uiState.asStateFlow()
+
+    init {
+        loadInstalledUpiApps()
+    }
+
+    private fun loadInstalledUpiApps() {
+        val apps = UpiPaymentManager.getInstalledUpiApps(getApplication())
+        _uiState.value = _uiState.value.copy(
+            installedUpiApps = apps,
+            selectedApp = apps.firstOrNull()?.packageName
+        )
+    }
+
+    fun selectPaymentApp(packageName: String) {
+        _uiState.value = _uiState.value.copy(selectedApp = packageName)
+    }
 
     fun loadUserDebts(targetUserId: String) {
         viewModelScope.launch {

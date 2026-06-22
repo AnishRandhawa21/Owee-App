@@ -4,31 +4,73 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.net.Uri
-import android.widget.Toast
-import java.util.Locale
+
+data class UpiApp(
+    val name: String,
+    val packageName: String,
+    val icon: Drawable
+)
 
 object UpiPaymentManager {
 
-    fun launchUpiPayment(context: Context, upiId: String, payeeName: String, amount: Double) {
-        // Step 1: Silent copy of amount
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val formattedAmount = String.format(Locale.US, "%.2f", amount)
-        clipboard.setPrimaryClip(ClipData.newPlainText("Owee Amount", formattedAmount))
-
-        val cleanId = upiId.trim()
-        val cleanName = Uri.encode(payeeName.trim()) // Encode name because it has spaces
-        val uriString = "upi://pay?pa=$cleanId&pn=$cleanName&cu=INR"
+    fun getInstalledUpiApps(context: Context): List<UpiApp> {
+        val packageManager = context.packageManager
         
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uriString))
+        // 1. Try to find apps by Intent query for upi://pay
+        val uri = Uri.parse("upi://pay")
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+        val resolveInfoList = packageManager.queryIntentActivities(intent, 0)
         
-        try {
-            // Step 3: Direct launch via chooser
-            context.startActivity(
-                Intent.createChooser(intent, "Pay via UPI")
+        val apps = resolveInfoList.map {
+            UpiApp(
+                name = it.loadLabel(packageManager).toString(),
+                packageName = it.activityInfo.packageName,
+                icon = it.loadIcon(packageManager)
             )
-        } catch (e: Exception) {
-            Toast.makeText(context, "No UPI app installed", Toast.LENGTH_SHORT).show()
+        }.toMutableList()
+
+        // 2. Fallback: Check common UPI packages manually
+        val commonPackages = listOf(
+            "com.google.android.apps.nbu.paisa.user",
+            "com.phonepe.app",
+            "net.one97.paytm",
+            "in.org.npci.upiapp",
+            "com.amazon.mShop.android.shopping",
+            "com.supermoney.app"
+        )
+
+        for (pkg in commonPackages) {
+            if (apps.none { it.packageName == pkg }) {
+                try {
+                    val appInfo = packageManager.getApplicationInfo(pkg, 0)
+                    if (appInfo.enabled) {
+                        apps.add(UpiApp(
+                            name = packageManager.getApplicationLabel(appInfo).toString(),
+                            packageName = pkg,
+                            icon = packageManager.getApplicationIcon(appInfo)
+                        ))
+                    }
+                } catch (e: Exception) {
+                    // App not installed
+                }
+            }
+        }
+
+        return apps.distinctBy { it.packageName }.sortedBy { it.name }
+    }
+
+    fun copyUpiId(context: Context, upiId: String) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("UPI ID", upiId.trim())
+        clipboard.setPrimaryClip(clip)
+    }
+
+    fun launchUpiApp(context: Context, packageName: String) {
+        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+        if (intent != null) {
+            context.startActivity(intent)
         }
     }
 }

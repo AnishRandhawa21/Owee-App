@@ -13,14 +13,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-
             OweeTheme {
-
                 val navController = rememberNavController()
-
-                RootNavGraph(
-                    navController = navController
-                )
+                RootNavGraph(navController = navController)
             }
         }
     }

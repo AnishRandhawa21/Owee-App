@@ -116,6 +116,10 @@ class CreateExpenseViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(customAmounts = customAmounts)
     }
 
+    fun resetSuccess() {
+        _uiState.value = _uiState.value.copy(isSuccess = false)
+    }
+
     fun createExpense(
         groupId: String
     ) {
@@ -174,12 +178,14 @@ class CreateExpenseViewModel : ViewModel() {
                 )
 
             result.onSuccess {
-
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        isSuccess = true
-                    )
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isSuccess = true,
+                    title = "",
+                    amount = "",
+                    customAmounts = emptyMap(),
+                    error = null
+                )
             }
 
             result.onFailure {

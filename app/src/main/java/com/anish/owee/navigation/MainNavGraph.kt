@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.anish.owee.ui.screen.friend.CreateFriendRequestScreen
 import com.anish.owee.ui.screen.friend.FriendDetailScreen
+import com.anish.owee.ui.screen.friend.FriendHistoryScreen
 import com.anish.owee.ui.screen.friend.FriendsScreen
 import com.anish.owee.ui.screen.group.CreateExpenseScreen
 import com.anish.owee.ui.screen.group.CreateGroupScreen
@@ -83,7 +84,22 @@ fun MainNavGraph(
                     navController.navigate(
                         "${Route.Settlement.route}/FRIEND/$friendshipId/$recipientUserId/$amount"
                     )
+                },
+                onViewHistoryClick = { id, name ->
+                    navController.navigate("${Route.FriendHistory.route}/$id/$name")
                 }
+            )
+        }
+
+        composable(
+            route = "${Route.FriendHistory.route}/{friendId}/{friendName}"
+        ) { backStackEntry ->
+            val friendId = backStackEntry.arguments?.getString("friendId").orEmpty()
+            val friendName = backStackEntry.arguments?.getString("friendName").orEmpty()
+            FriendHistoryScreen(
+                friendId = friendId,
+                friendName = friendName,
+                onBack = { navController.popBackStack() }
             )
         }
 

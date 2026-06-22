@@ -151,7 +151,9 @@ fun CreateFriendRequestScreen(
                 BasicTextField(
                     value = uiState.amount,
                     onValueChange = {
-                        if (it.length <= 7) viewModel.updateAmount(it)
+                        if (it.length <= 7 && (it.isEmpty() || it.toDoubleOrNull() != null && it.toDouble() >= 0)) {
+                            viewModel.updateAmount(it)
+                        }
                     },
                     modifier = Modifier.width(IntrinsicSize.Min),
                     textStyle = MaterialTheme.typography.displayLarge.copy(

@@ -7,11 +7,13 @@ import com.anish.owee.data.repository.AuthRepositoryImpl
 import com.anish.owee.data.repository.FriendRequestRepository
 import com.anish.owee.data.repository.FriendRequestRepositoryImpl
 import com.anish.owee.data.repository.SettlementRepositoryImpl
+import com.anish.owee.utils.UpiPaymentManager
 import com.anish.owee.viewmodel.state.SettlementUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import android.content.Context
 
 class SettlementViewModel : ViewModel() {
 
@@ -78,6 +80,14 @@ class SettlementViewModel : ViewModel() {
             _uiState.value.copy(
                 selectedApp = appName
             )
+    }
+
+    fun loadInstalledUpiApps(context: Context) {
+        val apps = UpiPaymentManager.getInstalledUpiApps(context)
+        _uiState.value = _uiState.value.copy(
+            installedUpiApps = apps,
+            selectedApp = apps.firstOrNull()?.packageName
+        )
     }
 
     fun setPaymentInProgress(

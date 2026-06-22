@@ -35,4 +35,6 @@ interface ExpenseRepository {
     ): List<ExpenseParticipant>
 
     fun expenseChanges(): kotlinx.coroutines.flow.Flow<Unit>
+
+    suspend fun deleteExpense(expenseId: String): Result<Unit>
 }

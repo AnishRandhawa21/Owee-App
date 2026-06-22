@@ -18,4 +18,6 @@ interface SettlementRepository {
     ): List<Settlement>
 
     fun settlementChanges(): kotlinx.coroutines.flow.Flow<Unit>
+
+    suspend fun deleteSettlement(settlementId: String): Result<Unit>
 }

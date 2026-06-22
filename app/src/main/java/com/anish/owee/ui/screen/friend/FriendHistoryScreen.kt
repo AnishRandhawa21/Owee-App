@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,9 +31,37 @@ fun FriendHistoryScreen(
     viewModel: FriendRequestViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var activityMenuAnchor by remember { mutableStateOf<com.anish.owee.viewmodel.state.FriendActivity?>(null) }
+    var activityToDelete by remember { mutableStateOf<com.anish.owee.viewmodel.state.FriendActivity?>(null) }
 
     LaunchedEffect(friendId) {
         viewModel.loadRequests(friendId)
+    }
+
+    if (activityToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { activityToDelete = null },
+            containerColor = Color.White,
+            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold) },
+            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        activityToDelete?.let { viewModel.deleteActivity(it, friendId) }
+                        activityToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { activityToDelete = null }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        )
     }
 
     Box(
@@ -109,12 +138,41 @@ fun FriendHistoryScreen(
                         key = { it.id }
                     ) { activity ->
                         Column {
-                            FriendRequestActivityCard(
-                                title = activity.title,
-                                note = activity.note,
-                                amount = activity.amount,
-                                status = if (activity.type == "settlement") "paid" else activity.status
-                            )
+                            Box {
+                                FriendRequestActivityCard(
+                                    title = activity.title,
+                                    note = activity.note,
+                                    amount = activity.amount,
+                                    status = if (activity.type == "settlement") "paid" else activity.status,
+                                    onLongClick = {
+                                        val currentUserId = viewModel.getCurrentUserId()
+                                        if (activity.creatorId == currentUserId) {
+                                            activityMenuAnchor = activity
+                                        }
+                                    }
+                                )
+                                
+                                DropdownMenu(
+                                    expanded = activityMenuAnchor?.id == activity.id,
+                                    onDismissRequest = { activityMenuAnchor = null },
+                                    containerColor = Color.White
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Delete Expense", color = MaterialTheme.colorScheme.error) },
+                                        onClick = {
+                                            activityMenuAnchor = null
+                                            activityToDelete = activity
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Delete,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    )
+                                }
+                            }
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 20.dp),
                                 thickness = 0.5.dp,

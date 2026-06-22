@@ -20,5 +20,9 @@ interface FriendRequestRepository {
         requestId: String
     ): Result<Unit>
 
+    suspend fun deleteRequest(
+        requestId: String
+    ): Result<Unit>
+
     fun requestChanges(): kotlinx.coroutines.flow.Flow<Unit>
 }

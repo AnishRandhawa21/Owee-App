@@ -13,7 +13,8 @@ data class FriendActivity(
     val amount: Double,
     val status: String,
     val createdAt: String,
-    val type: String // "request" or "settlement"
+    val type: String, // "request" or "settlement"
+    val creatorId: String // Add this for deletion ownership check
 )
 
 @Serializable

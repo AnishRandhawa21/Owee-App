@@ -232,6 +232,30 @@ class ExpenseRepositoryImpl : ExpenseRepository {
             }
         }
 
+    override suspend fun deleteExpense(expenseId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // First delete participants (in case cascade delete is not set)
+            postgrest["expense_participants"]
+                .delete {
+                    filter {
+                        eq("expense_id", expenseId)
+                    }
+                }
+
+            // Then delete the expense itself
+            postgrest["expenses"]
+                .delete {
+                    filter {
+                        eq("id", expenseId)
+                    }
+                }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_EXPENSE", "Delete expense failed", e)
+            Result.failure(e)
+        }
+    }
+
     override fun expenseChanges(): Flow<Unit> = flow {
         val channelId = "expense_changes_${UUID.randomUUID()}"
         val channel = client.realtime.channel(channelId)

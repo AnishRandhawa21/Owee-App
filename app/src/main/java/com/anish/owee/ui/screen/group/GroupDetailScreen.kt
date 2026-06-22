@@ -1,9 +1,12 @@
 package com.anish.owee.ui.screen.group
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.EaseInOutQuart
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +17,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material3.*
@@ -64,8 +68,36 @@ fun GroupDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedExpense by remember { mutableStateOf<Expense?>(null) }
     var selectedBalanceUserId by remember { mutableStateOf<String?>(null) }
+    var expenseMenuAnchor by remember { mutableStateOf<Expense?>(null) }
+    var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    if (expenseToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { expenseToDelete = null },
+            containerColor = Color.White,
+            title = { Text("Delete Expense?", fontWeight = FontWeight.ExtraBold) },
+            text = { Text("Are you sure you want to delete this expense? All balances in this group will be updated.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        expenseToDelete?.let { viewModel.deleteExpense(it.id, groupId) }
+                        expenseToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { expenseToDelete = null }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        )
+    }
 
     LaunchedEffect(groupId) {
         viewModel.loadCachedGroupData(groupId)
@@ -215,11 +247,40 @@ fun GroupDetailScreen(
                                         ?.displayName ?: "Unknown"
 
                                     Box(modifier = Modifier.animateItem()) {
-                                        ExpenseItemFlat(
-                                            expense = expense,
-                                            payerName = payerName,
-                                            onClick = { selectedExpense = expense }
-                                        )
+                                        Box {
+                                            ExpenseItemFlat(
+                                                expense = expense,
+                                                payerName = payerName,
+                                                onClick = { selectedExpense = expense },
+                                                onLongClick = {
+                                                    val currentUserId = viewModel.getCurrentUserId()
+                                                    if (expense.payerId == currentUserId) {
+                                                        expenseMenuAnchor = expense
+                                                    }
+                                                }
+                                            )
+                                            
+                                            DropdownMenu(
+                                                expanded = expenseMenuAnchor?.id == expense.id,
+                                                onDismissRequest = { expenseMenuAnchor = null },
+                                                containerColor = Color.White
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Delete Expense", color = MaterialTheme.colorScheme.error) },
+                                                    onClick = {
+                                                        expenseMenuAnchor = null
+                                                        expenseToDelete = expense
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.Delete,
+                                                            contentDescription = null,
+                                                            tint = MaterialTheme.colorScheme.error
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                        }
                                         HorizontalDivider(
                                             modifier = Modifier.padding(horizontal = 20.dp),
                                             thickness = 1.dp,
@@ -542,12 +603,16 @@ fun BalanceItemFlat(memberName: String, photoUrl: String?, amount: Double, onCli
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun ExpenseItemFlat(expense: Expense, payerName: String, onClick: () -> Unit) {
+fun ExpenseItemFlat(expense: Expense, payerName: String, onClick: () -> Unit, onLongClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

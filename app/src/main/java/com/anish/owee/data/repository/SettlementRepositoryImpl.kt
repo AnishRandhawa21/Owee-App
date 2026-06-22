@@ -104,6 +104,21 @@ class SettlementRepositoryImpl : SettlementRepository {
             }
         }
 
+    override suspend fun deleteSettlement(settlementId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            postgrest["settlements"]
+                .delete {
+                    filter {
+                        eq("id", settlementId)
+                    }
+                }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_SETTLEMENT", "Delete settlement failed", e)
+            Result.failure(e)
+        }
+    }
+
     override fun settlementChanges(): Flow<Unit> = flow {
         val channelId = "settlement_changes_${UUID.randomUUID()}"
         val channel = client.realtime.channel(channelId)

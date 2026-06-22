@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -86,6 +87,34 @@ fun FriendDetailScreen(
     }
 
     var showSettlementSheet by remember { mutableStateOf(false) }
+    var activityMenuAnchor by remember { mutableStateOf<com.anish.owee.viewmodel.state.FriendActivity?>(null) }
+    var activityToDelete by remember { mutableStateOf<com.anish.owee.viewmodel.state.FriendActivity?>(null) }
+
+    if (activityToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { activityToDelete = null },
+            containerColor = Color.White,
+            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold) },
+            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        activityToDelete?.let { friendRequestViewModel.deleteActivity(it, friendId) }
+                        activityToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { activityToDelete = null }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        )
+    }
 
     with(sharedTransitionScope) {
         Box(
@@ -282,12 +311,41 @@ fun FriendDetailScreen(
                                 ) { activity ->
                                     Box(modifier = Modifier.animateItem()) {
                                         Column {
-                                            FriendRequestActivityCard(
-                                                title = activity.title,
-                                                note = activity.note,
-                                                amount = activity.amount,
-                                                status = if (activity.type == "settlement") "paid" else activity.status
-                                            )
+                                            Box {
+                                                FriendRequestActivityCard(
+                                                    title = activity.title,
+                                                    note = activity.note,
+                                                    amount = activity.amount,
+                                                    status = if (activity.type == "settlement") "paid" else activity.status,
+                                                    onLongClick = {
+                                                        val currentUserId = friendRequestViewModel.getCurrentUserId()
+                                                        if (activity.creatorId == currentUserId) {
+                                                            activityMenuAnchor = activity
+                                                        }
+                                                    }
+                                                )
+                                                
+                                                DropdownMenu(
+                                                    expanded = activityMenuAnchor?.id == activity.id,
+                                                    onDismissRequest = { activityMenuAnchor = null },
+                                                    containerColor = Color.White
+                                                ) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("Delete Expense", color = MaterialTheme.colorScheme.error) },
+                                                        onClick = {
+                                                            activityMenuAnchor = null
+                                                            activityToDelete = activity
+                                                        },
+                                                        leadingIcon = {
+                                                            Icon(
+                                                                imageVector = Icons.Rounded.Delete,
+                                                                contentDescription = null,
+                                                                tint = MaterialTheme.colorScheme.error
+                                                            )
+                                                        }
+                                                    )
+                                                }
+                                            }
                                             HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 20.dp),
                                                 thickness = 0.5.dp,

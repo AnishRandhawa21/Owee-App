@@ -152,7 +152,8 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                             amount = request.amount,
                             status = displayStatus,
                             createdAt = request.createdAt,
-                            type = "request"
+                            type = "request",
+                            creatorId = request.creatorId
                         )
                     )
                 }
@@ -166,7 +167,8 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                             amount = settlement.amount,
                             status = "paid",
                             createdAt = settlement.createdAt,
-                            type = "settlement"
+                            type = "settlement",
+                            creatorId = settlement.payerId
                         )
                     )
                 }
@@ -209,6 +211,35 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
             repository.markRequestPaid(requestId)
 
             loadRequests(friendId)
+        }
+    }
+
+    fun getCurrentUserId(): String? = repository.getCurrentUserId()
+
+    fun deleteActivity(
+        activity: FriendActivity,
+        friendId: String
+    ) {
+        viewModelScope.launch {
+            val currentUserId = repository.getCurrentUserId()
+            if (activity.creatorId != currentUserId) {
+                _uiState.value = _uiState.value.copy(error = "You can only delete your own entries")
+                return@launch
+            }
+
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            val result = if (activity.type == "request") {
+                repository.deleteRequest(activity.id)
+            } else {
+                settlementRepository.deleteSettlement(activity.id)
+            }
+
+            result.onSuccess {
+                loadRequests(friendId)
+            }
+            result.onFailure {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = it.message)
+            }
         }
     }
 }

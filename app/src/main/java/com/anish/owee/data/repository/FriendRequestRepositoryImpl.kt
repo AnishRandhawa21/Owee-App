@@ -131,6 +131,22 @@ class FriendRequestRepositoryImpl : FriendRequestRepository {
         }
     }
 
+    override suspend fun deleteRequest(
+        requestId: String
+    ): Result<Unit> {
+        return try {
+            postgrest["friend_requests"]
+                .delete {
+                    filter {
+                        eq("id", requestId)
+                    }
+                }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override fun requestChanges(): Flow<Unit> = flow {
         val channelId = "request_changes_${UUID.randomUUID()}"
         val channel = client.realtime.channel(channelId)

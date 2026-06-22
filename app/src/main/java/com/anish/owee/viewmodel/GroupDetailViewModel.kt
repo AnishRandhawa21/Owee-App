@@ -148,4 +148,42 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
     fun getCurrentUserId(): String? {
         return groupRepository.getCurrentUserId()
     }
+
+    fun deleteExpense(expenseId: String, groupId: String) {
+        viewModelScope.launch {
+            val currentUserId = groupRepository.getCurrentUserId() ?: return@launch
+            val expense = _uiState.value.expenses.find { it.id == expenseId }
+            
+            if (expense?.payerId != currentUserId) {
+                _uiState.value = _uiState.value.copy(error = "Only the payer can delete this expense")
+                return@launch
+            }
+
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            expenseRepository.deleteExpense(expenseId).onSuccess {
+                loadGroupData(groupId)
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = it.message)
+            }
+        }
+    }
+
+    fun deleteSettlement(settlementId: String, groupId: String) {
+        viewModelScope.launch {
+            val currentUserId = groupRepository.getCurrentUserId() ?: return@launch
+            val settlement = _uiState.value.settlements.find { it.id == settlementId }
+
+            if (settlement?.payerId != currentUserId) {
+                _uiState.value = _uiState.value.copy(error = "Only the payer can delete this settlement")
+                return@launch
+            }
+
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            settlementRepository.deleteSettlement(settlementId).onSuccess {
+                loadGroupData(groupId)
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = it.message)
+            }
+        }
+    }
 }

@@ -53,9 +53,11 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
     private fun loadCachedFriends() {
         val currentUserId = friendshipRepository.getCurrentUserId()
         val cached = preferenceManager.getFriends()
+        val cachedBalances = preferenceManager.getFriendBalances()
         if (cached.isNotEmpty()) {
             _uiState.value = _uiState.value.copy(
                 friends = cached,
+                friendBalances = cachedBalances,
                 currentUserId = currentUserId,
                 isLoading = false
             )
@@ -127,7 +129,7 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
                     )
 
                 // Save to cache
-                preferenceManager.saveFriends(friends)
+                preferenceManager.saveFriends(friends, balances)
 
             } catch (e: Exception) {
 

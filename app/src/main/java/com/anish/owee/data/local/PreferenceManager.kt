@@ -50,9 +50,10 @@ class PreferenceManager(context: Context) {
         val userBalances: List<UserTotalBalance>
     )
 
-    fun saveFriends(friends: List<Friendship>) {
+    fun saveFriends(friends: List<Friendship>, balances: Map<String, Double> = emptyMap()) {
         prefs.edit().apply {
             putString("cached_friends", json.encodeToString(friends))
+            putString("cached_friend_balances", json.encodeToString(balances))
             apply()
         }
     }
@@ -63,6 +64,15 @@ class PreferenceManager(context: Context) {
             json.decodeFromString(friendsJson)
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    fun getFriendBalances(): Map<String, Double> {
+        val balancesJson = prefs.getString("cached_friend_balances", null) ?: return emptyMap()
+        return try {
+            json.decodeFromString(balancesJson)
+        } catch (e: Exception) {
+            emptyMap()
         }
     }
 

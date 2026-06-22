@@ -50,6 +50,10 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.core.EaseInOutQuart
 
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun GroupDetailScreen(
@@ -63,6 +67,7 @@ fun GroupDetailScreen(
         String,
         Double
     ) -> Unit = { _, _, _ -> },
+    onViewHistoryClick: (String) -> Unit = {},
     viewModel: GroupDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -239,7 +244,7 @@ fun GroupDetailScreen(
                                 }
                             } else {
                                 items(
-                                    items = uiState.expenses,
+                                    items = uiState.expenses.take(5),
                                     key = { it.id }
                                 ) { expense ->
                                     val payerName = uiState.members
@@ -286,6 +291,21 @@ fun GroupDetailScreen(
                                             thickness = 1.dp,
                                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                         )
+                                    }
+                                }
+
+                                if (uiState.expenses.size > 5) {
+                                    item {
+                                        TextButton(
+                                            onClick = { onViewHistoryClick(groupId) },
+                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                        ) {
+                                            Text(
+                                                "View Full History",
+                                                fontWeight = FontWeight.Bold,
+                                                color = com.anish.owee.ui.theme.TextSecondary
+                                            )
+                                        }
                                     }
                                 }
                             }

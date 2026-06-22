@@ -317,6 +317,7 @@ fun FriendDetailScreen(
                                                     note = activity.note,
                                                     amount = activity.amount,
                                                     status = if (activity.type == "settlement") "paid" else activity.status,
+                                                    createdAt = activity.createdAt,
                                                     onLongClick = {
                                                         val currentUserId = friendRequestViewModel.getCurrentUserId()
                                                         if (activity.creatorId == currentUserId) {

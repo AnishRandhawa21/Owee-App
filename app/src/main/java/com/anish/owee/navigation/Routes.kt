@@ -19,6 +19,7 @@ sealed class Route(val route: String) {
 
     data object CreateGroup : Route("create_group")
     data object GroupDetail : Route("group_detail")
+    data object GroupHistory : Route("group_history")
     data object CreateExpense : Route("create_expense")
 
     data object Settlement : Route("settlement")

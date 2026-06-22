@@ -1,4 +1,4 @@
-package com.anish.owee.ui.screen.friend
+package com.anish.owee.ui.screen.group
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -19,36 +19,37 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.anish.owee.ui.screen.friend.components.FriendRequestActivityCard
-import com.anish.owee.viewmodel.FriendRequestViewModel
+import com.anish.owee.data.model.Expense
+import com.anish.owee.ui.components.ExpenseDetailBottomSheet
+import com.anish.owee.viewmodel.GroupDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FriendHistoryScreen(
-    friendId: String,
-    friendName: String,
+fun GroupHistoryScreen(
+    groupId: String,
     onBack: () -> Unit,
-    viewModel: FriendRequestViewModel = viewModel()
+    viewModel: GroupDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var activityMenuAnchor by remember { mutableStateOf<com.anish.owee.viewmodel.state.FriendActivity?>(null) }
-    var activityToDelete by remember { mutableStateOf<com.anish.owee.viewmodel.state.FriendActivity?>(null) }
+    var selectedExpense by remember { mutableStateOf<Expense?>(null) }
+    var expenseMenuAnchor by remember { mutableStateOf<Expense?>(null) }
+    var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
 
-    LaunchedEffect(friendId) {
-        viewModel.loadRequests(friendId)
+    LaunchedEffect(groupId) {
+        viewModel.loadGroupData(groupId)
     }
 
-    if (activityToDelete != null) {
+    if (expenseToDelete != null) {
         AlertDialog(
-            onDismissRequest = { activityToDelete = null },
+            onDismissRequest = { expenseToDelete = null },
             containerColor = Color.White,
-            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold) },
-            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.") },
+            title = { Text("Delete Expense?", fontWeight = FontWeight.ExtraBold) },
+            text = { Text("Are you sure you want to delete this expense? All balances in this group will be updated.") },
             confirmButton = {
                 Button(
                     onClick = {
-                        activityToDelete?.let { viewModel.deleteActivity(it, friendId) }
-                        activityToDelete = null
+                        expenseToDelete?.let { viewModel.deleteExpense(it.id, groupId) }
+                        expenseToDelete = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = MaterialTheme.shapes.medium
@@ -57,7 +58,7 @@ fun FriendHistoryScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { activityToDelete = null }) {
+                TextButton(onClick = { expenseToDelete = null }) {
                     Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -72,6 +73,8 @@ fun FriendHistoryScreen(
         // --- Status Bar Loading ---
         AnimatedVisibility(
             visible = uiState.isLoading,
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
         ) {
             LinearProgressIndicator(
@@ -102,7 +105,7 @@ fun FriendHistoryScreen(
                 }
                 Column {
                     Text(
-                        text = "History",
+                        text = "Expense History",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 22.sp
@@ -110,20 +113,20 @@ fun FriendHistoryScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "with $friendName",
+                        text = uiState.group?.name ?: "Group",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            if (uiState.activities.isEmpty() && !uiState.isLoading) {
+            if (uiState.expenses.isEmpty() && !uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No history found",
+                        text = "No expenses found",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -134,35 +137,37 @@ fun FriendHistoryScreen(
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
                     items(
-                        items = uiState.activities,
+                        items = uiState.expenses,
                         key = { it.id }
-                    ) { activity ->
+                    ) { expense ->
+                        val payerName = uiState.members
+                            .firstOrNull { it.id == expense.payerId }
+                            ?.displayName ?: "Unknown"
+
                         Column {
                             Box {
-                                FriendRequestActivityCard(
-                                    title = activity.title,
-                                    note = activity.note,
-                                    amount = activity.amount,
-                                    status = if (activity.type == "settlement") "paid" else activity.status,
-                                    createdAt = activity.createdAt,
+                                ExpenseItemFlat(
+                                    expense = expense,
+                                    payerName = payerName,
+                                    onClick = { selectedExpense = expense },
                                     onLongClick = {
                                         val currentUserId = viewModel.getCurrentUserId()
-                                        if (activity.creatorId == currentUserId) {
-                                            activityMenuAnchor = activity
+                                        if (expense.payerId == currentUserId) {
+                                            expenseMenuAnchor = expense
                                         }
                                     }
                                 )
                                 
                                 DropdownMenu(
-                                    expanded = activityMenuAnchor?.id == activity.id,
-                                    onDismissRequest = { activityMenuAnchor = null },
+                                    expanded = expenseMenuAnchor?.id == expense.id,
+                                    onDismissRequest = { expenseMenuAnchor = null },
                                     containerColor = Color.White
                                 ) {
                                     DropdownMenuItem(
                                         text = { Text("Delete Expense", color = MaterialTheme.colorScheme.error) },
                                         onClick = {
-                                            activityMenuAnchor = null
-                                            activityToDelete = activity
+                                            expenseMenuAnchor = null
+                                            expenseToDelete = expense
                                         },
                                         leadingIcon = {
                                             Icon(
@@ -184,5 +189,17 @@ fun FriendHistoryScreen(
                 }
             }
         }
+    }
+
+    selectedExpense?.let { expense ->
+        val payerName = uiState.members.firstOrNull { it.id == expense.payerId }?.displayName ?: "Unknown"
+        val currentUserId = viewModel.getCurrentUserId() ?: ""
+        ExpenseDetailBottomSheet(
+            expense = expense,
+            payerName = payerName,
+            currentUserId = currentUserId,
+            balances = uiState.balances,
+            onDismiss = { selectedExpense = null }
+        )
     }
 }

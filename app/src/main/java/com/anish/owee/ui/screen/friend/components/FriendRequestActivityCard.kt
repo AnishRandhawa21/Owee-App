@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CallMade
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anish.owee.ui.theme.*
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.TimeZone
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -32,11 +36,24 @@ fun FriendRequestActivityCard(
     note: String?,
     amount: Double,
     status: String,
+    createdAt: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
     val config = statusConfig(status)
+    val formattedDate = remember(createdAt) {
+        try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val outputFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+            val date = inputFormat.parse(createdAt)
+            if (date != null) outputFormat.format(date) else ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     Row(
         modifier = modifier
@@ -77,14 +94,32 @@ fun FriendRequestActivityCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (!note.isNullOrBlank()) {
-                Text(
-                    text = note,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (formattedDate.isNotBlank()) {
+                    Text(
+                        text = formattedDate,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary.copy(alpha = 0.7f)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(3.dp)
+                            .background(TextSecondary.copy(alpha = 0.4f), CircleShape)
+                    )
+                }
+                if (!note.isNullOrBlank()) {
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
             }
             Spacer(Modifier.height(4.dp))
             StatusBadge(label = status, config = config)
@@ -191,14 +226,16 @@ private fun ActivityPreview() {
                 title = "Dinner at Barbeque Nation",
                 note = "Split equally between 4",
                 amount = 850.0,
-                status = "paid"
+                status = "paid",
+                createdAt = "2024-03-20T19:30:00"
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), thickness = 0.5.dp)
             FriendRequestActivityCard(
                 title = "Uber to airport",
                 note = null,
                 amount = 320.0,
-                status = "pending"
+                status = "pending",
+                createdAt = "2024-03-21T08:15:00"
             )
         }
     }

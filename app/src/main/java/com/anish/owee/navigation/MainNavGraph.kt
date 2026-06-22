@@ -13,6 +13,7 @@ import com.anish.owee.ui.screen.friend.FriendsScreen
 import com.anish.owee.ui.screen.group.CreateExpenseScreen
 import com.anish.owee.ui.screen.group.CreateGroupScreen
 import com.anish.owee.ui.screen.group.GroupDetailScreen
+import com.anish.owee.ui.screen.group.GroupHistoryScreen
 import com.anish.owee.ui.screen.group.GroupsScreen
 import com.anish.owee.ui.screen.home.CustomSettlementScreen
 import com.anish.owee.ui.screen.home.HomeScreen
@@ -190,7 +191,20 @@ fun MainNavGraph(
                     navController.navigate(
                         "${Route.Settlement.route}/GROUP/$selectedGroupId/$memberId/$amount"
                     )
+                },
+                onViewHistoryClick = { id ->
+                    navController.navigate("${Route.GroupHistory.route}/$id")
                 }
+            )
+        }
+
+        composable(
+            route = "${Route.GroupHistory.route}/{groupId}"
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId").orEmpty()
+            GroupHistoryScreen(
+                groupId = groupId,
+                onBack = { navController.popBackStack() }
             )
         }
         composable(Route.CreateGroup.route) {

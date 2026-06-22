@@ -27,6 +27,9 @@ import coil.compose.AsyncImage
 import com.anish.owee.data.model.Expense
 import com.anish.owee.data.model.GroupMemberBalance
 import com.anish.owee.viewmodel.ExpenseDetailViewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +43,19 @@ fun ExpenseDetailBottomSheet(
     viewModel: ExpenseDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val formattedDate = androidx.compose.runtime.remember(expense.createdAt) {
+        try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val outputFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+            val date = inputFormat.parse(expense.createdAt)
+            if (date != null) outputFormat.format(date) else ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     LaunchedEffect(expense.id) {
         viewModel.loadExpenseParticipants(expense.id)
@@ -224,7 +240,7 @@ fun ExpenseDetailBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
             
             Text(
-                text = "Added on ${expense.createdAt.take(10)}", // Simple date slice
+                text = "Added on $formattedDate",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.align(Alignment.CenterHorizontally)

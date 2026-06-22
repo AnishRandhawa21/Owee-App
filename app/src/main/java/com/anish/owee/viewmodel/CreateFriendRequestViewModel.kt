@@ -8,12 +8,18 @@ import com.anish.owee.data.repository.SettlementRepository
 import com.anish.owee.data.repository.SettlementRepositoryImpl
 import com.anish.owee.data.repository.FriendshipRepository
 import com.anish.owee.data.repository.FriendshipRepositoryImpl
+import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.viewmodel.state.CreateFriendRequestUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.viewModelScope
+import com.anish.owee.data.model.OweeNotification
+import com.anish.owee.data.repository.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import java.util.Locale
 
 class CreateFriendRequestViewModel : ViewModel() {
 
@@ -45,6 +51,12 @@ class CreateFriendRequestViewModel : ViewModel() {
 
     private val friendshipRepository: FriendshipRepository =
         FriendshipRepositoryImpl()
+    
+    private val authRepository: AuthRepository = 
+        AuthRepositoryImpl()
+    
+    private val notificationRepository: NotificationRepository = 
+        NotificationRepositoryImpl()
 
     fun createRequest(friendId: String) {
 
@@ -77,10 +89,12 @@ class CreateFriendRequestViewModel : ViewModel() {
 
                         val totalRequestedByMe = requests.filter { it.creatorId == currentUserId }.sumOf { it.amount }
                         val totalRequestedByFriend = requests.filter { it.creatorId != currentUserId }.sumOf { it.amount }
-                        val totalPaidByMe = settlements.filter { it.payerId == currentUserId }.sumOf { it.amount }
-                        val totalReceivedByMe = settlements.filter { it.payerId != currentUserId }.sumOf { it.amount }
                         
-                        val netBalance = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
+                        val netBalance = FriendBalanceCalculator.calculate(
+                            currentUserId = currentUserId,
+                            requests = requests,
+                            settlements = settlements
+                        )
                         
                         var creditToApplyToMyRequests = 0.0
                         var creditToApplyToFriendRequests = 0.0
@@ -114,6 +128,30 @@ class CreateFriendRequestViewModel : ViewModel() {
                     }
                 } catch (e: Exception) {
                     Log.e("OWEE_SYNC", "Request sync failed", e)
+                }
+
+                // Send Notification
+                viewModelScope.launch {
+                    try {
+                        val currentUser = authRepository.getCurrentUser()
+                        val notification = OweeNotification(
+                            senderId = currentUser?.id ?: "",
+                            receiverId = friendId,
+                            type = "money_request",
+                            title = "Money Request",
+                            body = "${currentUser?.displayName} requested ₹${String.format(Locale.US, "%.2f", amount)} for \"${uiState.value.note.ifBlank { "Money Request" }}\"",
+                            data = buildJsonObject {
+                                put("type", "money_request")
+                                put("payer_name", currentUser?.displayName ?: "Someone")
+                                put("amount", amount)
+                                put("expense_title", uiState.value.note.ifBlank { "Money Request" })
+                                currentUser?.photoUrl?.let { put("sender_photo", it) }
+                            }
+                        )
+                        notificationRepository.sendNotification(notification)
+                    } catch (e: Exception) {
+                        Log.e("OWEE_NOTIFICATION", "Failed to send money request notification", e)
+                    }
                 }
 
                 _uiState.value = _uiState.value.copy(

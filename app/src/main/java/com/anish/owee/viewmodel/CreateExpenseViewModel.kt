@@ -2,15 +2,16 @@ package com.anish.owee.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.anish.owee.data.repository.ExpenseRepository
-import com.anish.owee.data.repository.ExpenseRepositoryImpl
-import com.anish.owee.data.repository.GroupRepository
-import com.anish.owee.data.repository.GroupRepositoryImpl
+import com.anish.owee.data.repository.*
 import com.anish.owee.viewmodel.state.CreateExpenseUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import java.util.Locale
+import com.anish.owee.data.model.OweeNotification
 
 class CreateExpenseViewModel : ViewModel() {
 
@@ -19,6 +20,12 @@ class CreateExpenseViewModel : ViewModel() {
 
     private val expenseRepository: ExpenseRepository =
         ExpenseRepositoryImpl()
+
+    private val authRepository: AuthRepository = 
+        AuthRepositoryImpl()
+
+    private val notificationRepository: NotificationRepository = 
+        NotificationRepositoryImpl()
 
     private val _uiState =
         MutableStateFlow(CreateExpenseUiState())
@@ -178,6 +185,39 @@ class CreateExpenseViewModel : ViewModel() {
                 )
 
             result.onSuccess {
+                val title = _uiState.value.title
+                
+                // Send notifications to all participants
+                viewModelScope.launch {
+                    try {
+                        val currentUser = authRepository.getCurrentUser()
+                        val group = groupRepository.getGroup(groupId)
+                        
+                        participantShares.forEach { (userId, shareAmount) ->
+                            if (userId != currentUser?.id) {
+                                val notification = OweeNotification(
+                                    senderId = currentUser?.id ?: "",
+                                    receiverId = userId,
+                                    type = "group_expense",
+                                    title = group?.name ?: "New Expense",
+                                    body = "${currentUser?.displayName} added \"$title\": ₹${String.format(Locale.US, "%.2f", shareAmount)}",
+                                    data = buildJsonObject {
+                                        put("type", "group_expense")
+                                        put("group_name", group?.name ?: "")
+                                        put("payer_name", currentUser?.displayName ?: "Someone")
+                                        put("amount", shareAmount)
+                                        put("expense_title", title)
+                                        currentUser?.photoUrl?.let { put("sender_photo", it) }
+                                    }
+                                )
+                                notificationRepository.sendNotification(notification)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("OWEE_NOTIFICATION", "Failed to send expense notifications", e)
+                    }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isSuccess = true,

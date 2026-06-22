@@ -10,6 +10,7 @@ import com.anish.owee.data.repository.FriendRequestRepositoryImpl
 import com.anish.owee.data.repository.NotificationRepository
 import com.anish.owee.data.repository.NotificationRepositoryImpl
 import com.anish.owee.data.repository.SettlementRepositoryImpl
+import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.data.model.OweeNotification
 import com.anish.owee.utils.UpiPaymentManager
 import com.anish.owee.viewmodel.state.SettlementUiState
@@ -17,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class SettlementViewModel : ViewModel() {
 
@@ -95,6 +98,29 @@ class SettlementViewModel : ViewModel() {
 
             result.onSuccess {
                 android.util.Log.d("OWEE_SETTLEMENT", "Settlement created")
+                
+                // Send Notification
+                viewModelScope.launch {
+                    try {
+                        val notification = OweeNotification(
+                            senderId = currentUser.id,
+                            receiverId = targetUser.id,
+                            type = "settlement",
+                            title = "Payment Received",
+                            body = "${currentUser.displayName} settled ₹${String.format(java.util.Locale.US, "%.2f", _uiState.value.amount)}",
+                            data = buildJsonObject {
+                                put("type", "settlement")
+                                put("payer_name", currentUser.displayName)
+                                put("amount", _uiState.value.amount)
+                                currentUser.photoUrl?.let { put("sender_photo", it) }
+                            }
+                        )
+                        notificationRepository.sendNotification(notification)
+                    } catch (e: Exception) {
+                        android.util.Log.e("OWEE_NOTIFICATION", "Failed to send settlement notification", e)
+                    }
+                }
+
                 if (sourceType == "FRIEND") {
                     try {
                         val friendId = targetUser.id
@@ -104,10 +130,12 @@ class SettlementViewModel : ViewModel() {
                         
                         val totalRequestedByMe = requests.filter { it.creatorId == currentUserId }.sumOf { it.amount }
                         val totalRequestedByFriend = requests.filter { it.creatorId != currentUserId }.sumOf { it.amount }
-                        val totalPaidByMe = settlements.filter { it.payerId == currentUserId }.sumOf { it.amount }
-                        val totalReceivedByMe = settlements.filter { it.payerId != currentUserId }.sumOf { it.amount }
                         
-                        val netBalance = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
+                        val netBalance = FriendBalanceCalculator.calculate(
+                            currentUserId = currentUserId,
+                            requests = requests,
+                            settlements = settlements
+                        )
                         
                         var creditToApplyToMyRequests = 0.0
                         var creditToApplyToFriendRequests = 0.0

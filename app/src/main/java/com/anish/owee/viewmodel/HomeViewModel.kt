@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.repository.*
+import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.domain.GroupBalanceCalculator
 import com.anish.owee.viewmodel.state.DebtSource
 import com.anish.owee.viewmodel.state.HomeUiState
@@ -109,8 +110,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     }
 
                     // 3. Parallelize Friend Fetching
-                    val acceptedFriendships = friendshipRepository.getAcceptedFriendships()
-                    val friendResultsDeferred = acceptedFriendships.map { friendship ->
+                    val friendships = friendshipRepository.getFriendships()
+                    val friendResultsDeferred = friendships.map { friendship ->
                         async {
                             val friendId = if (friendship.senderId == currentUserId) friendship.receiverId else friendship.senderId
                             val friendUser = if (friendship.senderId == currentUserId) friendship.receiver else friendship.sender
@@ -118,21 +119,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             val requests = friendRequestRepository.getRequestsForFriend(friendId)
                             val friendSettlements = settlementRepository.getSettlements("FRIEND", friendship.id)
 
-                            var totalRequestedByMe = 0.0
-                            var totalRequestedByFriend = 0.0
-                            requests.forEach {
-                                if (it.creatorId == currentUserId) totalRequestedByMe += it.amount 
-                                else totalRequestedByFriend += it.amount 
-                            }
-
-                            var totalPaidByMe = 0.0
-                            var totalReceivedByMe = 0.0
-                            friendSettlements.forEach { 
-                                if (it.payerId == currentUserId) totalPaidByMe += it.amount 
-                                else totalReceivedByMe += it.amount 
-                            }
-
-                            val friendNet = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
+                            val friendNet = FriendBalanceCalculator.calculate(
+                                currentUserId = currentUserId,
+                                requests = requests,
+                                settlements = friendSettlements
+                            )
                             
                             Triple(friendId, friendUser, friendNet) to friendship
                         }

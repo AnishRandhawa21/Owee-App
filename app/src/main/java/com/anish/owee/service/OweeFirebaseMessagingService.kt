@@ -5,60 +5,109 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import coil.ImageLoader
+import coil.request.ImageRequest
+import coil.transform.CircleCropTransformation
 import com.anish.owee.MainActivity
 import com.anish.owee.R
 import com.anish.owee.data.local.PreferenceManager
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class OweeFirebaseMessagingService : FirebaseMessagingService() {
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        // Store the token in preferences
         PreferenceManager(applicationContext).saveFcmToken(token)
-        // Note: In a real implementation, we would also upload this token to Supabase here 
-        // if the user is already logged in.
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         
-        // Data payload usually contains our custom logic
-        val type = message.data["type"] // e.g., "group_expense", "friend_expense"
+        val type = message.data["type"]
+        val dataTitle = message.data["title"] ?: message.notification?.title
+        val dataBody = message.data["body"] ?: message.notification?.body
         val groupName = message.data["group_name"]
-        val payerName = message.data["payer_name"]
-        val amount = message.data["amount"]
-        val title = message.data["expense_title"]
+        val payerName = message.data["payer_name"] ?: "Someone"
+        val amountStr = message.data["amount"]
+        val expenseTitle = message.data["expense_title"] ?: "Expense"
+        val senderPhotoUrl = message.data["sender_photo"]
 
-        val notificationTitle: String
-        val notificationBody: String
+        val amount = amountStr?.toDoubleOrNull()?.let {
+            String.format(java.util.Locale.US, "%.2f", it)
+        } ?: amountStr ?: "0.00"
+
+        var notificationTitle: String
+        var notificationBody: String
 
         when (type) {
             "group_expense" -> {
-                notificationTitle = groupName ?: "New Group Expense"
-                notificationBody = "$payerName added \"$title\": ₹$amount"
+                notificationTitle = dataTitle ?: groupName ?: "New Group Expense"
+                notificationBody = dataBody ?: "$payerName added \"$expenseTitle\": ₹$amount"
             }
             "friend_expense" -> {
-                notificationTitle = "New Expense"
-                notificationBody = "$payerName added \"$title\": ₹$amount"
+                notificationTitle = dataTitle ?: "New Expense"
+                notificationBody = dataBody ?: "$payerName added \"$expenseTitle\": ₹$amount"
             }
             "friend_request" -> {
-                notificationTitle = "Friend Request"
-                notificationBody = "$payerName sent you a friend request"
+                notificationTitle = dataTitle ?: "Friend Request"
+                notificationBody = dataBody ?: "$payerName sent you a friend request"
+            }
+            "money_request", "payment_request" -> {
+                notificationTitle = dataTitle ?: "Money Request"
+                notificationBody = dataBody ?: "$payerName requested ₹$amount for \"$expenseTitle\""
+            }
+            "upi_alert" -> {
+                notificationTitle = dataTitle ?: "UPI ID Missing"
+                notificationBody = dataBody ?: "Add your UPI ID to receive payments"
+            }
+            "reminder" -> {
+                notificationTitle = dataTitle ?: "Payment Reminder"
+                notificationBody = dataBody ?: "A friend is reminding you about a payment"
+            }
+            "settlement" -> {
+                notificationTitle = dataTitle ?: "Payment Received"
+                notificationBody = dataBody ?: "$payerName settled ₹$amount"
             }
             else -> {
-                notificationTitle = message.notification?.title ?: "Owee"
-                notificationBody = message.notification?.body ?: "New activity in Owee"
+                notificationTitle = dataTitle ?: "Owee"
+                notificationBody = dataBody ?: "New activity in Owee"
             }
         }
         
-        showNotification(notificationTitle, notificationBody)
+        // Show notification with image if available
+        serviceScope.launch {
+            val bitmap = if (!senderPhotoUrl.isNullOrBlank()) {
+                getBitmapFromUrl(senderPhotoUrl)
+            } else {
+                null
+            }
+            showNotification(notificationTitle, notificationBody, bitmap)
+        }
     }
 
-    private fun showNotification(title: String, body: String) {
+    private suspend fun getBitmapFromUrl(url: String): Bitmap? {
+        val loader = ImageLoader(this)
+        val request = ImageRequest.Builder(this)
+            .data(url)
+            .transformations(CircleCropTransformation())
+            .build()
+        
+        val result = loader.execute(request)
+        return (result.drawable as? BitmapDrawable)?.bitmap
+    }
+
+    private fun showNotification(title: String, body: String, largeIcon: Bitmap? = null) {
         val channelId = "owee_notifications"
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -66,7 +115,7 @@ class OweeFirebaseMessagingService : FirebaseMessagingService() {
             val channel = NotificationChannel(
                 channelId,
                 "Owee Updates",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             )
             notificationManager.createNotificationChannel(channel)
         }
@@ -81,12 +130,17 @@ class OweeFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.mipmap.ic_launcher) // Use app icon for now
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .apply {
+                if (largeIcon != null) {
+                    setLargeIcon(largeIcon)
+                }
+            }
 
         notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
     }

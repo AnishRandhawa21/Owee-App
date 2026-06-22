@@ -24,6 +24,8 @@ interface FriendshipRepository {
 
     suspend fun getAcceptedFriendships(): List<Friendship>
 
+    suspend fun getFriendships(): List<Friendship>
+
     suspend fun removeFriendship(
         friendshipId: String
     ): Result<Unit>

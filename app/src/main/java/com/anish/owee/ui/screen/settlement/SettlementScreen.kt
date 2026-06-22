@@ -173,12 +173,12 @@ fun SettlementScreen(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .width(72.dp)
+                            .width(64.dp)
                             .clickable { viewModel.selectPaymentApp(app.packageName) }
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(56.dp)
+                                .size(52.dp)
                                 .clip(CircleShape)
                                 .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                                 .border(
@@ -192,7 +192,7 @@ fun SettlementScreen(
                             Image(
                                 bitmap = app.icon.toBitmap().asImageBitmap(),
                                 contentDescription = app.name,
-                                modifier = Modifier.size(40.dp).clip(CircleShape)
+                                modifier = Modifier.size(36.dp).clip(CircleShape)
                             )
                         }
                         Spacer(Modifier.height(4.dp))

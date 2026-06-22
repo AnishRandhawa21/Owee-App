@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.model.User
 import com.anish.owee.data.repository.*
+import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.domain.GroupBalanceCalculator
 import com.anish.owee.utils.UpiApp
 import com.anish.owee.utils.UpiPaymentManager
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.util.Locale
 
 data class CustomSettlementUiState(
@@ -106,7 +109,7 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                     }
 
                     val friendSourceDeferred = async {
-                        val friendship = friendshipRepository.getAcceptedFriendships().firstOrNull {
+                        val friendship = friendshipRepository.getFriendships().firstOrNull {
                             it.senderId == targetUserId || it.receiverId == targetUserId
                         }
 
@@ -114,15 +117,12 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                             val requests = friendRequestRepository.getRequestsForFriend(targetUserId)
                             val settlements = settlementRepository.getSettlements("FRIEND", friendship.id)
 
-                            var totalRequestedByMe = 0.0
-                            var totalRequestedByFriend = 0.0
-                            requests.forEach { if (it.creatorId == currentUserId) totalRequestedByMe += it.amount else totalRequestedByFriend += it.amount }
+                            val friendNet = FriendBalanceCalculator.calculate(
+                                currentUserId = currentUserId,
+                                requests = requests,
+                                settlements = settlements
+                            )
 
-                            var totalPaidByMe = 0.0
-                            var totalReceivedByMe = 0.0
-                            settlements.forEach { if (it.payerId == currentUserId) totalPaidByMe += it.amount else totalReceivedByMe += it.amount }
-
-                            val friendNet = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
                             if (kotlin.math.abs(friendNet) > 0.01) {
                                 DebtSource(
                                     sourceType = "FRIEND",
@@ -186,9 +186,10 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
         _uiState.value = _uiState.value.copy(showUpiMissingDialog = false)
     }
 
-    fun handlePaymentClick() {
+    fun handlePaymentClick(context: android.content.Context) {
         val targetUser = _uiState.value.targetUser
         val currentUser = _uiState.value.currentUser
+        val selectedPackage = _uiState.value.selectedApp
         
         if (targetUser == null || currentUser == null) {
             _uiState.value = _uiState.value.copy(error = "User profile not loaded. Please try again.")
@@ -209,8 +210,10 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                 )
                 notificationRepository.sendNotification(notification)
             }
-        } else {
-            showConfirmationDialog()
+        } else if (selectedPackage != null) {
+            UpiPaymentManager.copyUpiId(context, targetUser.upiId)
+            UpiPaymentManager.launchUpiApp(context, selectedPackage)
+            setPaymentInProgress(true)
         }
     }
 
@@ -231,20 +234,45 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                     if (remainingAmount <= 0.001) break
                     
                     val debtValue = kotlin.math.abs(debt.amount)
-                    val settlementValue = kotlin.math.min(remainingAmount, debtValue)
+                    val rawSettlementValue = kotlin.math.min(remainingAmount, debtValue)
+                    val settlementValue = kotlin.math.round(rawSettlementValue * 100.0) / 100.0
                     
-                    settlementRepository.createSettlement(
-                        sourceType = debt.sourceType,
-                        sourceId = debt.sourceId,
-                        payerId = currentUserId,
-                        receiverId = targetUser.id,
-                        amount = settlementValue
-                    )
+                    if (settlementValue > 0) {
+                        settlementRepository.createSettlement(
+                            sourceType = debt.sourceType,
+                            sourceId = debt.sourceId,
+                            payerId = currentUserId,
+                            receiverId = targetUser.id,
+                            amount = settlementValue
+                        )
+                    }
                     
                     remainingAmount -= settlementValue
                 }
 
                 _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
+
+                // Send ONE combined notification for the total amount
+                viewModelScope.launch {
+                    try {
+                        val notification = com.anish.owee.data.model.OweeNotification(
+                            senderId = currentUserId,
+                            receiverId = targetUser.id,
+                            type = "settlement",
+                            title = "Payment Received",
+                            body = "${_uiState.value.currentUser?.displayName ?: "Someone"} settled ₹${String.format(Locale.US, "%.2f", amountToPay)}",
+                            data = buildJsonObject {
+                                put("type", "settlement")
+                                put("payer_name", _uiState.value.currentUser?.displayName ?: "Someone")
+                                put("amount", amountToPay)
+                                _uiState.value.currentUser?.photoUrl?.let { put("sender_photo", it) }
+                            }
+                        )
+                        notificationRepository.sendNotification(notification)
+                    } catch (e: Exception) {
+                        android.util.Log.e("OWEE_NOTIFICATION", "Failed to send bulk settlement notification", e)
+                    }
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }
@@ -267,11 +295,18 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                     title = "Payment Reminder",
                     body = "$currentUserName is reminding you about ₹${String.format(Locale.US, "%.2f", amount)}"
                 )
-                notificationRepository.sendNotification(notification)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    isSuccess = true // This will close the screen. If you want to stay, change this.
-                )
+                val result = notificationRepository.sendNotification(notification)
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isSuccess = true
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = result.exceptionOrNull()?.message ?: "Failed to send reminder"
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }

@@ -24,5 +24,7 @@ data class FriendshipUiState(
 
     val validationBalance: Double? = null,
 
+    val friendBalances: Map<String, Double> = emptyMap(),
+
     val error: String? = null
 )

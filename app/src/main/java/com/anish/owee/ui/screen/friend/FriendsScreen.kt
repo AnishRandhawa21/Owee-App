@@ -50,6 +50,9 @@ import com.anish.owee.ui.screen.friend.components.SearchResultStatus
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -63,6 +66,19 @@ fun FriendsScreen(
     val uiState by friendshipViewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                friendshipViewModel.loadData(isSilent = true)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     var friendshipToRemove by remember { mutableStateOf<Friendship?>(null) }
     var showRemoveDialog by remember { mutableStateOf(false) }
@@ -413,7 +429,10 @@ fun FriendsScreen(
                                             )
                                         ) {
                                             Column {
-                                                FriendCard(friend = it)
+                                                FriendCard(
+                                                    friend = it,
+                                                    balance = uiState.friendBalances[friendship.id]
+                                                )
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = 20.dp),
                                                     thickness = 1.dp,

@@ -90,13 +90,6 @@ fun CustomSettlementScreen(
         PaymentConfirmationDialog(
             amount = amountToPay,
             onConfirm = {
-                val upiId = uiState.targetUser?.upiId
-                val selectedPackage = uiState.selectedApp
-                if (upiId != null && selectedPackage != null) {
-                    UpiPaymentManager.copyUpiId(context, upiId)
-                    UpiPaymentManager.launchUpiApp(context, selectedPackage)
-                    viewModel.setPaymentInProgress(true)
-                }
                 viewModel.createSettlements()
                 viewModel.dismissConfirmationDialog()
             },
@@ -145,7 +138,7 @@ fun CustomSettlementScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, start = 8.dp, end = 20.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
@@ -158,8 +151,7 @@ fun CustomSettlementScreen(
                 Text(
                     text = "Settle Balance",
                     style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 22.sp
+                        fontWeight = FontWeight.ExtraBold
                     ),
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -167,57 +159,63 @@ fun CustomSettlementScreen(
 
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 32.dp),
+                    .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(24.dp))
 
-                // User Profile
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                // User Profile & Debt Info
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (uiState.targetUser?.photoUrl != null) {
-                        AsyncImage(
-                            model = uiState.targetUser?.photoUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = uiState.targetUser?.displayName?.take(1)?.uppercase() ?: "?",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.align(Alignment.Center),
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                    // User Profile
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        if (uiState.targetUser?.photoUrl != null) {
+                            AsyncImage(
+                                model = uiState.targetUser?.photoUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                text = uiState.targetUser?.displayName?.take(1)?.uppercase() ?: "?",
+                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.align(Alignment.Center),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
-                }
 
-                Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                Text(
-                    text = if (isOwedByThem) "${uiState.targetUser?.displayName} owes you" else "You owe ${uiState.targetUser?.displayName}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "₹${String.format(Locale.US, "%.2f", abs(uiState.totalDebt))}",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        color = if (isOwedByThem) Success else Error
+                    Text(
+                        text = if (isOwedByThem) "${uiState.targetUser?.displayName} owes you" else "You owe ${uiState.targetUser?.displayName}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                )
+                    Text(
+                        text = "₹${String.format(Locale.US, "%.2f", abs(uiState.totalDebt))}",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            color = if (isOwedByThem) Success else Error
+                        )
+                    )
+                }
 
                 Spacer(Modifier.height(32.dp))
 
                 // Amount Input
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
                 ) {
                     Text(
                         text = "₹",
@@ -278,7 +276,7 @@ fun CustomSettlementScreen(
 
                 // Quick Selection Buttons
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     QuickAmountButton(
@@ -293,18 +291,19 @@ fun CustomSettlementScreen(
                     )
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.weight(1f))
 
                 // UPI App Selector
                 if (!isOwedByThem) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                         Text(
                             text = "Select UPI App",
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 12.dp)
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
                         )
                         LazyRow(
+                            contentPadding = PaddingValues(horizontal = 24.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -350,21 +349,19 @@ fun CustomSettlementScreen(
                     }
                 }
 
-                Spacer(Modifier.weight(1f))
-
                 // Bottom Action
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(bottom = 32.dp)
+                        .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
                 ) {
                     Button(
                         onClick = {
                             if (isOwedByThem) {
                                 viewModel.sendReminder()
                             } else {
-                                viewModel.handlePaymentClick()
+                                viewModel.handlePaymentClick(context)
                             }
                         },
                         modifier = Modifier

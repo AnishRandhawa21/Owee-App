@@ -5,12 +5,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.data.repository.*
+import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.viewmodel.state.FriendshipUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class FriendshipViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -25,6 +29,12 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
 
     private val settlementRepository: SettlementRepository =
         SettlementRepositoryImpl()
+    
+    private val authRepository: AuthRepository = 
+        AuthRepositoryImpl()
+    
+    private val notificationRepository: NotificationRepository = 
+        NotificationRepositoryImpl()
 
     private val preferenceManager = PreferenceManager(application)
 
@@ -54,23 +64,25 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun observeFriendshipChanges() {
         viewModelScope.launch {
-            friendshipRepository.friendshipChanges()
-                .collectLatest {
-
-                    android.util.Log.d(
-                        "OWEE_REALTIME",
-                        "Friendship change received"
-                    )
-
-                    loadData()
-                }
+            com.anish.owee.data.remote.SupabaseProvider.ensureRealtimeConnected()
+            merge(
+                friendshipRepository.friendshipChanges(),
+                friendRequestRepository.requestChanges(),
+                settlementRepository.settlementChanges()
+            ).collectLatest {
+                android.util.Log.d(
+                    "OWEE_REALTIME",
+                    "Friendship screen data change detected"
+                )
+                loadData(isSilent = true)
+            }
         }
     }
 
-    fun loadData() {
+    fun loadData(isSilent: Boolean = false) {
         viewModelScope.launch {
 
-            if (_uiState.value.friends.isEmpty()) {
+            if (_uiState.value.friends.isEmpty() && !isSilent) {
                 _uiState.value =
                     _uiState.value.copy(
                         isLoading = true,
@@ -89,13 +101,29 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
                 val friends =
                     friendshipRepository.getAcceptedFriendships()
 
+                val currentUserId = friendshipRepository.getCurrentUserId() ?: ""
+                val balances = mutableMapOf<String, Double>()
+                
+                friends.forEach { friendship ->
+                    val friendId = if (friendship.senderId == currentUserId) friendship.receiverId else friendship.senderId
+                    val requests = friendRequestRepository.getRequestsForFriend(friendId)
+                    val settlements = settlementRepository.getSettlements("FRIEND", friendship.id)
+                    
+                    balances[friendship.id] = FriendBalanceCalculator.calculate(
+                        currentUserId = currentUserId,
+                        requests = requests,
+                        settlements = settlements
+                    )
+                }
+
                 _uiState.value =
                     _uiState.value.copy(
                         isLoading = false,
                         incomingRequests = incoming,
                         outgoingRequests = outgoing,
                         friends = friends,
-                        currentUserId = friendshipRepository.getCurrentUserId()
+                        friendBalances = balances,
+                        currentUserId = currentUserId
                     )
 
                 // Save to cache
@@ -155,8 +183,31 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
     fun sendFriendRequest(receiverId: String) {
         viewModelScope.launch {
 
-            friendshipRepository
+            val result = friendshipRepository
                 .sendFriendRequest(receiverId)
+
+            result.onSuccess {
+                viewModelScope.launch {
+                    try {
+                        val currentUser = authRepository.getCurrentUser()
+                        val notification = com.anish.owee.data.model.OweeNotification(
+                            senderId = currentUser?.id ?: "",
+                            receiverId = receiverId,
+                            type = "friend_request",
+                            title = "Friend Request",
+                            body = "${currentUser?.displayName} sent you a friend request",
+                            data = buildJsonObject {
+                                put("type", "friend_request")
+                                put("payer_name", currentUser?.displayName ?: "Someone")
+                                currentUser?.photoUrl?.let { put("sender_photo", it) }
+                            }
+                        )
+                        notificationRepository.sendNotification(notification)
+                    } catch (e: Exception) {
+                        android.util.Log.e("OWEE_NOTIFICATION", "Failed to send friend request notification", e)
+                    }
+                }
+            }
 
             loadData()
         }
@@ -194,21 +245,11 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
                 val requests = friendRequestRepository.getRequestsForFriend(friendId)
                 val settlements = settlementRepository.getSettlements("FRIEND", friendshipId)
 
-                var totalRequestedByMe = 0.0
-                var totalRequestedByFriend = 0.0
-                requests.forEach { 
-                    if (it.creatorId == currentUserId) totalRequestedByMe += it.amount 
-                    else totalRequestedByFriend += it.amount 
-                }
-
-                var totalPaidByMe = 0.0
-                var totalReceivedByMe = 0.0
-                settlements.forEach { 
-                    if (it.payerId == currentUserId) totalPaidByMe += it.amount 
-                    else totalReceivedByMe += it.amount 
-                }
-
-                val netBalance = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
+                val netBalance = FriendBalanceCalculator.calculate(
+                    currentUserId = currentUserId,
+                    requests = requests,
+                    settlements = settlements
+                )
                 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,

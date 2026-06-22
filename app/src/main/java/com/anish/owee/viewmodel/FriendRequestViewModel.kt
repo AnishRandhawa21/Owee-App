@@ -10,6 +10,7 @@ import com.anish.owee.data.repository.FriendshipRepository
 import com.anish.owee.data.repository.FriendshipRepositoryImpl
 import com.anish.owee.data.repository.SettlementRepository
 import com.anish.owee.data.repository.SettlementRepositoryImpl
+import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.viewmodel.state.FriendActivity
 import com.anish.owee.viewmodel.state.FriendRequestUiState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,10 +107,12 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                 // Final Ledger Calculation
                 val totalRequestedByMe = requests.filter { it.creatorId == currentUserId }.sumOf { it.amount }
                 val totalRequestedByFriend = requests.filter { it.creatorId != currentUserId }.sumOf { it.amount }
-                val totalPaidByMe = settlements.filter { it.payerId == currentUserId }.sumOf { it.amount }
-                val totalReceivedByMe = settlements.filter { it.payerId != currentUserId }.sumOf { it.amount }
                 
-                val netBalance = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
+                val netBalance = FriendBalanceCalculator.calculate(
+                    currentUserId = currentUserId,
+                    requests = requests,
+                    settlements = settlements
+                )
                 
                 // Determine how much of the debt/credit has been "Cleared"
                 var creditToApplyToMyRequests = 0.0

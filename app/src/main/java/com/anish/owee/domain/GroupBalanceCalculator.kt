@@ -88,7 +88,7 @@ object GroupBalanceCalculator {
 
                 GroupMemberBalance(
                     userId = userId,
-                    amount = amount
+                    amount = kotlin.math.round(amount * 100.0) / 100.0
                 )
             }
     }

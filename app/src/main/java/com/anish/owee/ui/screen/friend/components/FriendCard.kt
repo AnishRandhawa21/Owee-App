@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Person
@@ -21,10 +22,15 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.anish.owee.data.model.User
 import com.anish.owee.ui.theme.TextSecondary
+import com.anish.owee.ui.theme.Success
+import com.anish.owee.ui.theme.Error
+import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun FriendCard(
     friend: User,
+    balance: Double? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -61,6 +67,26 @@ fun FriendCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+
+        if (balance != null && abs(balance) > 0.01) {
+            val isOwed = balance > 0
+            val containerColor = if (isOwed) Success.copy(alpha = 0.1f) else Error.copy(alpha = 0.1f)
+            val contentColor = if (isOwed) Success else Error
+            
+            Surface(
+                color = containerColor,
+                shape = RoundedCornerShape(100.dp)
+            ) {
+                Text(
+                    text = "₹${String.format(Locale.US, "%.0f", abs(balance))}",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        color = contentColor
+                    )
+                )
+            }
         }
     }
 }

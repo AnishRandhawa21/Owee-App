@@ -257,6 +257,31 @@ class FriendshipRepositoryImpl : FriendshipRepository {
             }
         }
 
+    override suspend fun getFriendships(): List<Friendship> =
+        withContext(Dispatchers.IO) {
+
+            val currentUserId =
+                auth.currentUserOrNull()?.id
+                    ?: return@withContext emptyList()
+
+            try {
+                postgrest["friendships"]
+                    .select(selectColumns) {
+                        filter {
+                            neq("status", "rejected")
+
+                            or {
+                                eq("sender_id", currentUserId)
+                                eq("receiver_id", currentUserId)
+                            }
+                        }
+                    }
+                    .decodeList<Friendship>()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
     override suspend fun searchUsers(
         query: String
     ): List<SearchUser> = withContext(Dispatchers.IO) {

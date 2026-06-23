@@ -12,7 +12,36 @@
           "package_name": "com.anish.owee"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "941398626552-e84qok9kf4c7g1m3ij9bgfr2988jka3m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anish.owee",
+            "certificate_hash": "8d022e882bfc8133c6d3488c226c412d2be1d5ca"
+          }
+        },
+        {
+          "client_id": "941398626552-j7i0jh5u2b7annils5v3bqt59pjbqkoc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anish.owee",
+            "certificate_hash": "ad6394b0d311024c835be092a185348bef151191"
+          }
+        },
+        {
+          "client_id": "941398626552-peb2tamnpu46v7c4ifr593r3d470mivv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anish.owee",
+            "certificate_hash": "374098d1dd96786c0a7c82fb9dc51e5ef710268e"
+          }
+        },
+        {
+          "client_id": "941398626552-af2hd0tledcgiglr5aknf1kp2abhp0ae.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBM06CD29eVA-lItgkiWoOMGBDdtOzjpdo"
@@ -20,7 +49,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "941398626552-af2hd0tledcgiglr5aknf1kp2abhp0ae.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

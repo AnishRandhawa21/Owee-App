@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalContext
+import android.content.pm.PackageManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -36,6 +38,20 @@ fun ProfileScreen(
     val profileViewModel: ProfileViewModel = viewModel()
     val uiState by profileViewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    
+    val versionName = remember {
+        try {
+            val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+            packageInfo.versionName
+        } catch (e: Exception) {
+            "1.0.0"
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -239,6 +255,13 @@ fun ProfileScreen(
                             ),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                             modifier = Modifier.offset(y = (-10).dp)
+                        )
+                        
+                        Text(
+                            text = "Version $versionName",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                            modifier = Modifier.padding(top = 16.dp)
                         )
                     }
                 }

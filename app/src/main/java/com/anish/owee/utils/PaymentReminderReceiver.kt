@@ -8,6 +8,10 @@ import java.util.Locale
 
 class PaymentReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (PaymentReminderWorker.isAppInForeground(context)) {
+            return
+        }
+
         val preferenceManager = PreferenceManager(context)
         val pendingPayment = preferenceManager.getPendingPayment()
 

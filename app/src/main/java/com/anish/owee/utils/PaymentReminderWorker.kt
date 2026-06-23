@@ -3,6 +3,7 @@ package com.anish.owee.utils
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -21,6 +22,10 @@ class PaymentReminderWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): ListenableWorker.Result {
+        if (isAppInForeground(applicationContext)) {
+            return ListenableWorker.Result.success()
+        }
+
         val preferenceManager = PreferenceManager(applicationContext)
         val pendingPayment = preferenceManager.getPendingPayment()
 
@@ -36,6 +41,15 @@ class PaymentReminderWorker(
     }
 
     companion object {
+        fun isAppInForeground(context: Context): Boolean {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val appProcesses = activityManager.runningAppProcesses ?: return false
+            return appProcesses.any { 
+                it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND && 
+                it.processName == context.packageName 
+            }
+        }
+
         fun showNotification(context: Context, title: String, body: String) {
             val channelId = "payment_reminders"
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -53,8 +67,11 @@ class PaymentReminderWorker(
                 notificationManager.createNotificationChannel(channel)
             }
 
-            val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                putExtra("OPEN_SETTLEMENT_CONFIRMATION", true)
+            } ?: Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("OPEN_SETTLEMENT_CONFIRMATION", true)
             }
             

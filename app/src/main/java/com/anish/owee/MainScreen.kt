@@ -9,15 +9,22 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.anish.owee.navigation.MainNavGraph
 import com.anish.owee.navigation.Route
 import com.anish.owee.ui.components.BottomNavigationBar
+import com.anish.owee.ui.components.SwipeToSettleSheet
+import com.anish.owee.viewmodel.PendingPaymentViewModel
 import com.anish.owee.viewmodel.SessionViewModel
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -25,10 +32,39 @@ import com.anish.owee.viewmodel.SessionViewModel
 fun MainScreen(
     sessionViewModel: SessionViewModel
 ) {
+    val context = LocalContext.current
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val pendingViewModel: PendingPaymentViewModel = viewModel(context as ComponentActivity)
+    val pendingPayment by pendingViewModel.pendingPayment.collectAsState()
+    val isConfirming by pendingViewModel.isConfirming.collectAsState()
+    val isSuccess by pendingViewModel.isSuccess.collectAsState()
+
+    LaunchedEffect(Unit) {
+        pendingViewModel.checkPendingPayment()
+    }
+
+    LaunchedEffect(Unit) {
+        pendingViewModel.navigationEvent.collect { event ->
+            when (event) {
+                is com.anish.owee.viewmodel.PendingPaymentEvent.Navigate -> {
+                    navController.navigate(event.route) {
+                        // Clear the settlement screen from the backstack so pressing "Back" 
+                        // from the detail screen doesn't take the user back to settlement.
+                        navController.currentDestination?.route?.let { currentRouteName ->
+                            if (currentRouteName.contains("settlement", ignoreCase = true)) {
+                                popUpTo(currentRouteName) { inclusive = true }
+                            }
+                        }
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
 
     val topLevelRoutes = listOf(
         Route.Home.route,
@@ -75,6 +111,16 @@ fun MainScreen(
                     sharedTransitionScope = this@SharedTransitionLayout,
                     modifier = Modifier.fillMaxSize()
                 )
+
+                pendingPayment?.let { payment ->
+                    SwipeToSettleSheet(
+                        payment = payment,
+                        isConfirming = isConfirming,
+                        isSuccess = isSuccess,
+                        onConfirm = { pendingViewModel.confirmPayment() },
+                        onCancel = { pendingViewModel.cancelPayment() }
+                    )
+                }
             }
         }
     }

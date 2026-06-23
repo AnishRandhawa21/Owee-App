@@ -3,10 +3,13 @@ package com.anish.owee.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.anish.owee.data.local.PreferenceManager
+import com.anish.owee.data.model.PendingPayment
 import com.anish.owee.data.model.User
 import com.anish.owee.data.repository.*
 import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.domain.GroupBalanceCalculator
+import com.anish.owee.utils.PaymentReminderManager
 import com.anish.owee.utils.UpiApp
 import com.anish.owee.utils.UpiPaymentManager
 import com.anish.owee.viewmodel.state.DebtSource
@@ -211,6 +214,20 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                 notificationRepository.sendNotification(notification)
             }
         } else if (selectedPackage != null) {
+            // Save pending payment
+            val amountStr = _uiState.value.amount
+            val amount = amountStr.toDoubleOrNull() ?: 0.0
+            val pendingPayment = PendingPayment(
+                amount = amount,
+                recipientId = targetUser.id,
+                recipientName = targetUser.displayName ?: "Friend",
+                sourceType = "CUSTOM",
+                sourceId = targetUser.id,
+                timestamp = System.currentTimeMillis()
+            )
+            PreferenceManager(context).savePendingPayment(pendingPayment)
+            PaymentReminderManager(context).scheduleReminders()
+
             UpiPaymentManager.copyUpiId(context, targetUser.upiId)
             UpiPaymentManager.launchUpiApp(context, selectedPackage)
             setPaymentInProgress(true)
@@ -251,6 +268,10 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                 }
 
                 _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
+                
+                // Clear pending payment
+                PreferenceManager(getApplication()).clearPendingPayment()
+                PaymentReminderManager(getApplication()).cancelReminders()
 
                 // Send ONE combined notification for the total amount
                 viewModelScope.launch {

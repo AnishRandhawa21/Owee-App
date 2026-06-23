@@ -1,7 +1,8 @@
 package com.anish.owee.viewmodel
 
+import android.app.Application
 import android.content.Context
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.repository.AuthRepository
 import com.anish.owee.data.repository.AuthRepositoryImpl
@@ -12,7 +13,10 @@ import com.anish.owee.data.repository.NotificationRepositoryImpl
 import com.anish.owee.data.repository.SettlementRepositoryImpl
 import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.data.model.OweeNotification
+import com.anish.owee.data.model.PendingPayment
+import com.anish.owee.utils.PaymentReminderManager
 import com.anish.owee.utils.UpiPaymentManager
+import com.anish.owee.data.local.PreferenceManager
 import com.anish.owee.viewmodel.state.SettlementUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-class SettlementViewModel : ViewModel() {
+class SettlementViewModel(application: Application) : AndroidViewModel(application) {
 
     private val authRepository: AuthRepository = AuthRepositoryImpl()
 
@@ -99,6 +103,10 @@ class SettlementViewModel : ViewModel() {
             result.onSuccess {
                 android.util.Log.d("OWEE_SETTLEMENT", "Settlement created")
                 
+                // Clear pending payment
+                PreferenceManager(getApplication()).clearPendingPayment()
+                PaymentReminderManager(getApplication()).cancelReminders()
+
                 // Send Notification
                 viewModelScope.launch {
                     try {
@@ -197,6 +205,9 @@ class SettlementViewModel : ViewModel() {
     fun handlePayClick(context: Context) {
         val user = _uiState.value.user
         val selectedPackage = _uiState.value.selectedApp
+        val amount = _uiState.value.amount
+        val sourceType = _uiState.value.sourceType
+        val sourceId = _uiState.value.sourceId
         
         if (user?.upiId.isNullOrBlank()) {
             _uiState.value = _uiState.value.copy(showTargetUpiMissingDialog = true)
@@ -216,6 +227,18 @@ class SettlementViewModel : ViewModel() {
                 }
             }
         } else if (selectedPackage != null) {
+            // Save pending payment
+            val pendingPayment = PendingPayment(
+                amount = amount,
+                recipientId = user.id,
+                recipientName = user.displayName ?: "Friend",
+                sourceType = sourceType,
+                sourceId = sourceId,
+                timestamp = System.currentTimeMillis()
+            )
+            PreferenceManager(context).savePendingPayment(pendingPayment)
+            PaymentReminderManager(context).scheduleReminders()
+
             UpiPaymentManager.copyUpiId(context, user.upiId!!)
             UpiPaymentManager.launchUpiApp(context, selectedPackage)
             setPaymentInProgress(true)

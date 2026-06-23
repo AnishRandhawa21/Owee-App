@@ -55,21 +55,6 @@ fun SettlementScreen(
         viewModel.loadInstalledUpiApps(context)
     }
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                if (uiState.value.isPaymentInProgress) {
-                    viewModel.showConfirmationDialog()
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
     LaunchedEffect(uiState.value.settlementSuccess) {
         if (uiState.value.settlementSuccess) {
             onSettlementSuccess()
@@ -78,20 +63,6 @@ fun SettlementScreen(
 
     LaunchedEffect(userId, amount, sourceType, sourceId) {
         viewModel.loadSettlementData(userId, amount, sourceType, sourceId)
-    }
-
-    // Confirmation dialog — appears automatically after payment succeeds
-    if (uiState.value.showConfirmationDialog) {
-        PaymentConfirmationDialog(
-            amount = uiState.value.amount,
-            onConfirm = {
-                viewModel.createSettlement()
-                viewModel.dismissConfirmationDialog()
-            },
-            onDismiss = {
-                viewModel.dismissConfirmationDialog()
-            }
-        )
     }
 
     if (uiState.value.showTargetUpiMissingDialog) {

@@ -3,6 +3,7 @@ package com.anish.owee.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import com.anish.owee.data.model.Friendship
+import com.anish.owee.data.model.PendingPayment
 import com.anish.owee.viewmodel.state.FriendRequestUiState
 import com.anish.owee.viewmodel.state.GroupDetailUiState
 import com.anish.owee.viewmodel.state.GroupWithMetadata
@@ -130,6 +131,30 @@ class PreferenceManager(context: Context) {
 
     fun getFcmToken(): String? {
         return prefs.getString("fcm_token", null)
+    }
+
+    fun savePendingPayment(payment: PendingPayment) {
+        prefs.edit().putString("pending_payment", json.encodeToString(payment)).commit()
+    }
+
+    fun getPendingPayment(): PendingPayment? {
+        val paymentJson = prefs.getString("pending_payment", null) ?: return null
+        return try {
+            val payment = json.decodeFromString<PendingPayment>(paymentJson)
+            // Check if older than 2 days
+            if (System.currentTimeMillis() - payment.timestamp > 2 * 24 * 60 * 60 * 1000) {
+                clearPendingPayment()
+                null
+            } else {
+                payment
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun clearPendingPayment() {
+        prefs.edit().remove("pending_payment").commit()
     }
 
     fun clearAll() {

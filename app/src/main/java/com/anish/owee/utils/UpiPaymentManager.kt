@@ -38,7 +38,7 @@ object UpiPaymentManager {
             "net.one97.paytm",
             "in.org.npci.upiapp",
             "com.amazon.mShop.android.shopping",
-            "com.supermoney.app"
+            "money.super.payments"
         )
 
         for (pkg in commonPackages) {
@@ -58,7 +58,15 @@ object UpiPaymentManager {
             }
         }
 
-        return apps.distinctBy { it.packageName }.sortedBy { it.name }
+        val priorityMap = mapOf(
+            "com.google.android.apps.nbu.paisa.user" to 1,
+            "money.super.payments" to 2,
+            "com.phonepe.app" to 3,
+            "net.one97.paytm" to 4
+        )
+
+        return apps.distinctBy { it.packageName }
+            .sortedWith(compareBy<UpiApp> { priorityMap[it.packageName] ?: Int.MAX_VALUE }.thenBy { it.name })
     }
 
     fun copyUpiId(context: Context, upiId: String) {

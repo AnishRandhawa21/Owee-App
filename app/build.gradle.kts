@@ -119,4 +119,6 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
 
+    implementation(libs.androidx.work.runtime.ktx)
+
 }

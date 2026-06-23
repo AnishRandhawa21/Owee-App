@@ -65,39 +65,11 @@ fun CustomSettlementScreen(
         }
     }
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                if (uiState.isPaymentInProgress) {
-                    viewModel.showConfirmationDialog()
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
     val isOwedByThem = uiState.totalDebt > 0.01
     val amountToPay = uiState.amount.toDoubleOrNull() ?: 0.0
     val totalDebtAbs = abs(uiState.totalDebt)
     val hasAmount = amountToPay > 0.01
     val exceedsDebt = amountToPay > totalDebtAbs + 0.01
-
-    if (uiState.showConfirmationDialog) {
-        PaymentConfirmationDialog(
-            amount = amountToPay,
-            onConfirm = {
-                viewModel.createSettlements()
-                viewModel.dismissConfirmationDialog()
-            },
-            onDismiss = {
-                viewModel.dismissConfirmationDialog()
-            }
-        )
-    }
 
     if (uiState.showUpiMissingDialog) {
         AlertDialog(

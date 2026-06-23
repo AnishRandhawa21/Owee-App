@@ -13,7 +13,6 @@ import com.anish.owee.utils.PaymentReminderManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -66,6 +65,20 @@ class PendingPaymentViewModel(application: Application) : AndroidViewModel(appli
                     return@launch
                 }
                 
+                // 1. Trigger navigation instantly before heavy background work
+                val route = when(payment.sourceType) {
+                    "FRIEND" -> "${Route.FriendDetail.route}/${payment.recipientId}"
+                    "GROUP" -> "${Route.GroupDetail.route}/${payment.sourceId}"
+                    else -> Route.Home.route 
+                }
+
+                _isSuccess.value = true
+                _navigationEvent.emit(PendingPaymentEvent.Navigate(route))
+                
+                // 2. Clear from UI immediately so the sheet disappears
+                _pendingPayment.value = null
+
+                // 3. Perform the actual database work in the background
                 if (payment.sourceType == "CUSTOM") {
                     performBulkSettlement(payment, currentUser.id)
                 } else {
@@ -78,23 +91,9 @@ class PendingPaymentViewModel(application: Application) : AndroidViewModel(appli
                     )
                 }
 
-                // Clear BOTH memory and storage IMMEDIATELY after success
-                // to prevent any race condition if the app is closed during delay
+                // Clear storage and reminders
                 preferenceManager.clearPendingPayment()
                 reminderManager.cancelReminders()
-                
-                _isSuccess.value = true
-                delay(1200) // Pause for the "Settled!" animation
-                
-                // Determine navigation
-                val route = when(payment.sourceType) {
-                    "FRIEND" -> "${Route.FriendDetail.route}/${payment.recipientId}"
-                    "GROUP" -> "${Route.GroupDetail.route}/${payment.sourceId}"
-                    else -> null // Stay on current screen for CUSTOM
-                }
-
-                _pendingPayment.value = null
-                route?.let { _navigationEvent.emit(PendingPaymentEvent.Navigate(it)) }
 
             } catch (e: Exception) {
                 android.util.Log.e("PendingPayment", "Payment confirmation failed", e)
@@ -161,7 +160,6 @@ class PendingPaymentViewModel(application: Application) : AndroidViewModel(appli
                         remainingAmount -= settlementValue
                     }
                 }
-                clearPending()
             }
         } catch (e: Exception) {
             android.util.Log.e("PendingPayment", "Bulk settlement failed", e)

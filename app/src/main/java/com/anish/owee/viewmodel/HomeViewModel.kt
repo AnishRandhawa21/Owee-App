@@ -35,7 +35,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         loadCachedData()
-        loadHomeData()
+        // If we have cached data, the first load should be silent to avoid skeleton flicker
+        val hasData = _uiState.value.userBalances.isNotEmpty() || 
+                     _uiState.value.totalBalance != 0.0 ||
+                     _uiState.value.groupBalance != 0.0 ||
+                     _uiState.value.friendBalance != 0.0
+        
+        loadHomeData(isSilent = hasData)
         observeChanges()
     }
 

@@ -39,7 +39,7 @@ fun ProfileScreen(
     val uiState by profileViewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     val context = LocalContext.current
-    
+
     val versionName = remember {
         try {
             val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -148,7 +148,7 @@ fun ProfileScreen(
                         label = "Email",
                         value = uiState.user?.email.orEmpty()
                     )
-                    
+
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 20.dp),
                         thickness = 1.dp,

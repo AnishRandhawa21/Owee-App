@@ -11,7 +11,7 @@ import com.anish.owee.navigation.Route
  * card/FAB expansion backgrounds stationary.
  */
 object NavAnimations {
-    const val DURATION = 450 
+    const val DURATION = 450
 
     private val bottomNavRoutes = listOf(
         Route.Home.route,

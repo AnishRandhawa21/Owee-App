@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
+    isReadyToNavigate: Boolean,
     onNavigateNext: () -> Unit
 ) {
     val scale = remember { Animatable(0.72f) }
@@ -42,16 +43,18 @@ fun SplashScreen(
             targetValue = 1f,
             animationSpec = tween(380)
         )
+    }
 
-        delay(1100)
-
-        // Fade out before handoff
-        alpha.animateTo(
-            targetValue = 0f,
-            animationSpec = tween(280)
-        )
-
-        onNavigateNext()
+    LaunchedEffect(isReadyToNavigate) {
+        if (isReadyToNavigate) {
+            delay(600) // Small extra delay for premium feel
+            // Fade out before handoff
+            alpha.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(400)
+            )
+            onNavigateNext()
+        }
     }
 
     Box(

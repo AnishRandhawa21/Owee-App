@@ -36,8 +36,19 @@ class OweeFirebaseMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         
         if (isAppInForeground()) {
-            // Don't show notification if app is in foreground
             return
+        }
+
+        // If the message contains a notification payload, the OS handles it 
+        // when the app is in background. We only want to show a manual notification
+        // if there's NO notification payload (data only) OR we want to customize it.
+        // To avoid duplicates, we check if notification is null.
+        if (message.notification != null) {
+            // OS handled it or will handle it. 
+            // However, Supabase often sends both. To fix the "Double Notification",
+            // we should only proceed if we are purely data-driven.
+            // If you want to keep manual control, the backend should send "data" only.
+            return 
         }
 
         val type = message.data["type"]
@@ -98,7 +109,7 @@ class OweeFirebaseMessagingService : FirebaseMessagingService() {
             } else {
                 null
             }
-            showNotification(notificationTitle, notificationBody, bitmap)
+            showNotification(notificationTitle, notificationBody, bitmap, message.data)
         }
     }
 
@@ -113,7 +124,7 @@ class OweeFirebaseMessagingService : FirebaseMessagingService() {
         return (result.drawable as? BitmapDrawable)?.bitmap
     }
 
-    private fun showNotification(title: String, body: String, largeIcon: Bitmap? = null) {
+    private fun showNotification(title: String, body: String, largeIcon: Bitmap? = null, data: Map<String, String>? = null) {
         val channelId = "owee_notifications"
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -126,14 +137,19 @@ class OweeFirebaseMessagingService : FirebaseMessagingService() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-        } ?: Intent(this, MainActivity::class.java).apply {
+        val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            data?.forEach { (key, value) ->
+                putExtra(key, value)
+            }
+            // Add a flag to identify this was from a notification
+            putExtra("is_notification", true)
         }
         
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this, 
+            (System.currentTimeMillis() % Int.MAX_VALUE).toInt(), 
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -150,7 +166,14 @@ class OweeFirebaseMessagingService : FirebaseMessagingService() {
                 }
             }
 
-        notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
+        // Fixed ID based on type to prevent spamming, or use unique ID if they are different events
+        val notificationId = when(data?.get("type")) {
+            "friend_request" -> 1001
+            "group_expense" -> 1002
+            else -> System.currentTimeMillis().toInt()
+        }
+
+        notificationManager.notify(notificationId, notificationBuilder.build())
     }
 
     private fun isAppInForeground(): Boolean {

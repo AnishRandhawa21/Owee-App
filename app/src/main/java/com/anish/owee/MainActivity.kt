@@ -12,13 +12,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anish.owee.ui.components.SwipeToSettleSheet
 import com.anish.owee.viewmodel.PendingPaymentViewModel
+import com.anish.owee.navigation.Route
+import com.anish.owee.navigation.Graph
 
 class MainActivity : ComponentActivity() {
 
@@ -40,8 +39,36 @@ class MainActivity : ComponentActivity() {
         setContent {
             OweeTheme {
                 val navController = rememberNavController()
-                RootNavGraph(navController = navController)
+                
+                // Extract destination from intent if opened from notification
+                val startRoute = remember { 
+                    handleNotificationIntent(intent)
+                }
+
+                RootNavGraph(
+                    navController = navController,
+                    startRoute = startRoute
+                )
             }
+        }
+    }
+
+    private fun handleNotificationIntent(intent: Intent?): String? {
+        if (intent == null) return null
+        
+        val type = intent.getStringExtra("type")
+        val isNotification = intent.getBooleanExtra("is_notification", false)
+        
+        if (!isNotification || type == null) return null
+
+        return when (type) {
+            "friend_request" -> Route.Friends.route
+            "group_expense" -> {
+                val groupId = intent.getStringExtra("group_id")
+                if (groupId != null) "${Route.GroupDetail.route}/$groupId" else Route.Home.route
+            }
+            "settlement", "payment_request" -> Route.Home.route
+            else -> null
         }
     }
 

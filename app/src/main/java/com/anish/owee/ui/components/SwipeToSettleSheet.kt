@@ -52,7 +52,10 @@ fun SwipeToSettleSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = { if (!isConfirming && !isSuccess) onCancel() },
-        sheetState = rememberModalBottomSheetState(confirmValueChange = { !isConfirming && !isSuccess }),
+        sheetState = rememberModalBottomSheetState(
+            confirmValueChange = { !isConfirming && !isSuccess },
+            skipPartiallyExpanded = true
+        ),
         dragHandle = null,
         containerColor = if (isSuccess) SuccessContainer else MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)

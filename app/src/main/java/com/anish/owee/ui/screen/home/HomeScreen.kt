@@ -1,7 +1,7 @@
 package com.anish.owee.ui.screen.home
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,7 +57,8 @@ fun HomeScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadHomeData()
+                // Refresh data silently in background when returning to home
+                viewModel.loadHomeData(isSilent = true)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -108,97 +110,103 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 indicator = { }
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 120.dp)
-                ) {
-                    // Total Balance Card
-                    item {
-                        TotalBalanceCard(uiState.totalBalance)
-                    }
+                // Only show skeleton on first load if we have no data
+                // If we already have data (from cache or previous load), just show the list
+                if (uiState.isLoading && uiState.userBalances.isEmpty()) {
+                    HomeSkeleton()
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 120.dp)
+                    ) {
+                        // Total Balance Card
+                        item {
+                            TotalBalanceCard(uiState.totalBalance)
+                        }
 
-                    // Section: Quick Settle (Instagram Story Style)
-                    if (uiState.userBalances.isNotEmpty()) {
+                        // Section: Quick Settle (Instagram Story Style)
+                        if (uiState.userBalances.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Quick Settle",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    modifier = Modifier.padding(start = 24.dp, bottom = 16.dp)
+                                )
+                                LazyRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    items(uiState.userBalances) { userBalance ->
+                                        PeopleSummaryStory(
+                                            userBalance = userBalance,
+                                            onClick = { onUserClick(userBalance.user.id) }
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
+                        }
+
+                        // Section: Breakdown
                         item {
                             Text(
-                                text = "Quick Settle",
+                                text = "Balance Breakdown",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                modifier = Modifier.padding(start = 24.dp, bottom = 16.dp)
+                                modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 12.dp)
                             )
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        }
+
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                items(uiState.userBalances) { userBalance ->
-                                    PeopleSummaryStory(
-                                        userBalance = userBalance,
-                                        onClick = { onUserClick(userBalance.user.id) }
-                                    )
-                                }
+                                BalanceSummarySmall(
+                                    label = "Groups",
+                                    amount = uiState.groupBalance,
+                                    icon = Icons.Rounded.Groups,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                BalanceSummarySmall(
+                                    label = "Friends",
+                                    amount = uiState.friendBalance,
+                                    icon = Icons.Rounded.Person,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
-                            Spacer(modifier = Modifier.height(24.dp))
                         }
-                    }
 
-                    // Section: Breakdown
-                    item {
-                        Text(
-                            text = "Balance Breakdown",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 12.dp)
-                        )
-                    }
-
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            BalanceSummarySmall(
-                                label = "Groups",
-                                amount = uiState.groupBalance,
-                                icon = Icons.Rounded.Groups,
-                                modifier = Modifier.weight(1f)
-                            )
-                            BalanceSummarySmall(
-                                label = "Friends",
-                                amount = uiState.friendBalance,
-                                icon = Icons.Rounded.Person,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    // Branding Footer
-                    item {
-                        Spacer(modifier = Modifier.height(64.dp))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 24.dp, bottom = 8.dp),
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Text(
-                                text = "OWEE",
-                                style = MaterialTheme.typography.displayLarge.copy(
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = 2.sp,
-                                    fontSize = 64.sp
-                                ),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
-                            )
-                            Text(
-                                text = "SPLIT SMART • LIVE BETTER",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = 1.sp
-                                ),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                                modifier = Modifier.offset(y = (-10).dp)
-                            )
+                        // Branding Footer
+                        item {
+                            Spacer(modifier = Modifier.height(64.dp))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 24.dp, bottom = 8.dp),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                Text(
+                                    text = "OWEE",
+                                    style = MaterialTheme.typography.displayLarge.copy(
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 2.sp,
+                                        fontSize = 64.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                                )
+                                Text(
+                                    text = "SPLIT SMART • LIVE BETTER",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 1.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                    modifier = Modifier.offset(y = (-10).dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -395,6 +403,80 @@ fun BalanceSummarySmall(
                     style = MaterialTheme.typography.labelSmall,
                     color = if (amount >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeSkeleton() {
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp)
+            .graphicsLayer { this.alpha = alpha }
+    ) {
+        // Balance Card Skeleton
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .padding(vertical = 20.dp),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceVariant
+        ) {}
+
+        // Quick Settle Skeleton
+        Text(
+            text = "Quick Settle",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            repeat(4) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Surface(
+                        modifier = Modifier.size(68.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {}
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        modifier = Modifier.width(48.dp).height(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {}
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Breakdown Skeleton
+        Text(
+            text = "Balance Breakdown",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(bottom = 12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            repeat(2) {
+                Surface(
+                    modifier = Modifier.weight(1f).height(100.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {}
             }
         }
     }

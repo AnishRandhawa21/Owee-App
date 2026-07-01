@@ -41,7 +41,52 @@ fun FriendRequestActivityCard(
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
-    val config = statusConfig(status)
+    val colorScheme = MaterialTheme.colorScheme
+    val config = remember(status, colorScheme) {
+        when (status.lowercase().trim()) {
+            "paid", "settled" -> StatusConfig(
+                icon = Icons.Rounded.CheckCircle,
+                iconTint = colorScheme.secondary,
+                iconBackground = colorScheme.secondary,
+                badgeTint = colorScheme.secondary,
+                badgeBackground = colorScheme.secondary,
+                amountColor = colorScheme.secondary
+            )
+            "pending" -> StatusConfig(
+                icon = Icons.Rounded.Schedule,
+                iconTint = Warning,
+                iconBackground = Warning,
+                badgeTint = Warning,
+                badgeBackground = Warning,
+                amountColor = colorScheme.onSurface
+            )
+            "you owe", "owe" -> StatusConfig(
+                icon = Icons.Rounded.CallMade,
+                iconTint = colorScheme.error,
+                iconBackground = colorScheme.error,
+                badgeTint = colorScheme.error,
+                badgeBackground = colorScheme.error,
+                amountColor = colorScheme.error
+            )
+            "owes you", "owed" -> StatusConfig(
+                icon = Icons.Rounded.CallReceived,
+                iconTint = colorScheme.secondary,
+                iconBackground = colorScheme.secondary,
+                badgeTint = colorScheme.secondary,
+                badgeBackground = colorScheme.secondary,
+                amountColor = colorScheme.secondary
+            )
+            else -> StatusConfig(
+                icon = Icons.Rounded.Schedule,
+                iconTint = colorScheme.onSurfaceVariant,
+                iconBackground = colorScheme.outline,
+                badgeTint = colorScheme.onSurfaceVariant,
+                badgeBackground = colorScheme.outline,
+                amountColor = colorScheme.onSurface
+            )
+        }
+    }
+
     val formattedDate = remember(createdAt) {
         try {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
@@ -102,19 +147,19 @@ fun FriendRequestActivityCard(
                     Text(
                         text = formattedDate,
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                     Box(
                         modifier = Modifier
                             .size(3.dp)
-                            .background(TextSecondary.copy(alpha = 0.4f), CircleShape)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape)
                     )
                 }
                 if (!note.isNullOrBlank()) {
                     Text(
                         text = note,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -162,51 +207,6 @@ private data class StatusConfig(
     val badgeBackground: Color,
     val amountColor: Color
 )
-
-private fun statusConfig(status: String): StatusConfig {
-    return when (status.lowercase().trim()) {
-        "paid", "settled" -> StatusConfig(
-            icon = Icons.Rounded.CheckCircle,
-            iconTint = Success,
-            iconBackground = Success,
-            badgeTint = Success,
-            badgeBackground = Success,
-            amountColor = Success
-        )
-        "pending" -> StatusConfig(
-            icon = Icons.Rounded.Schedule,
-            iconTint = Warning,
-            iconBackground = Warning,
-            badgeTint = Warning,
-            badgeBackground = Warning,
-            amountColor = TextPrimary
-        )
-        "you owe", "owe" -> StatusConfig(
-            icon = Icons.Rounded.CallMade,
-            iconTint = Error,
-            iconBackground = Error,
-            badgeTint = Error,
-            badgeBackground = Error,
-            amountColor = Error
-        )
-        "owes you", "owed" -> StatusConfig(
-            icon = Icons.Rounded.CallReceived,
-            iconTint = Primary,
-            iconBackground = Primary,
-            badgeTint = Primary,
-            badgeBackground = Primary,
-            amountColor = Primary
-        )
-        else -> StatusConfig(
-            icon = Icons.Rounded.Schedule,
-            iconTint = TextSecondary,
-            iconBackground = Outline,
-            badgeTint = TextSecondary,
-            badgeBackground = Outline,
-            amountColor = TextPrimary
-        )
-    }
-}
 
 private fun formatRupees(amount: Double): String {
     val formatter = NumberFormat.getNumberInstance(Locale("en", "IN"))

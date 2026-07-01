@@ -20,9 +20,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.anish.owee.ui.theme.Background
-import com.anish.owee.ui.theme.OnPrimary
-import com.anish.owee.ui.theme.Primary
 import kotlinx.coroutines.delay
 
 @Composable
@@ -60,7 +57,7 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Surface(
@@ -69,13 +66,13 @@ fun SplashScreen(
                 .scale(scale.value)
                 .graphicsLayer { this.alpha = alpha.value },
             shape = RoundedCornerShape(20.dp),
-            color = Primary
+            color = MaterialTheme.colorScheme.primary
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
                     text = "O",
                     style = MaterialTheme.typography.headlineLarge,
-                    color = OnPrimary,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 34.sp
                 )
             }

@@ -253,7 +253,7 @@ fun ExpenseDetailBottomSheet(
 fun StatusBadge(isPaid: Boolean) {
     StatusBadge(
         text = if (isPaid) "PAID" else "UNPAID",
-        color = if (isPaid) Color(0xFF2E7D32) else Color(0xFFEF6C00)
+        color = if (isPaid) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
     )
 }
 

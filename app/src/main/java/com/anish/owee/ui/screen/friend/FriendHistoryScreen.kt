@@ -41,9 +41,9 @@ fun FriendHistoryScreen(
     if (activityToDelete != null) {
         AlertDialog(
             onDismissRequest = { activityToDelete = null },
-            containerColor = Color.White,
-            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold) },
-            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -84,7 +84,6 @@ fun FriendHistoryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
         ) {
             // Header
             Row(
@@ -156,7 +155,7 @@ fun FriendHistoryScreen(
                                 DropdownMenu(
                                     expanded = activityMenuAnchor?.id == activity.id,
                                     onDismissRequest = { activityMenuAnchor = null },
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ) {
                                     DropdownMenuItem(
                                         text = { Text("Delete Expense", color = MaterialTheme.colorScheme.error) },

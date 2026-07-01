@@ -1,10 +1,16 @@
 package com.anish.owee.ui.screen.profile
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
@@ -14,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -23,20 +30,24 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import android.content.pm.PackageManager
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.anish.owee.ui.theme.*
 import com.anish.owee.viewmodel.ProfileViewModel
 import com.anish.owee.viewmodel.SessionViewModel
+import com.anish.owee.viewmodel.ThemeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    sessionViewModel: SessionViewModel
+    sessionViewModel: SessionViewModel,
+    themeViewModel: ThemeViewModel
 ) {
     val profileViewModel: ProfileViewModel = viewModel()
     val uiState by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     val context = LocalContext.current
 
@@ -73,7 +84,6 @@ fun ProfileScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
         ) {
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -135,12 +145,27 @@ fun ProfileScreen(
                     Text(
                         text = "@${uiState.user?.username.orEmpty()}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 // Flat Menu Items
                 Column(modifier = Modifier.fillMaxWidth()) {
+                    ProfileSectionHeader("APPEARANCE")
+                    
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        PremiumSegmentedControl(
+                            selectedMode = themeMode,
+                            onModeSelected = { themeViewModel.setThemeMode(it) }
+                        )
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
                     ProfileSectionHeader("ACCOUNT")
                     
                     ProfileRow(
@@ -190,7 +215,7 @@ fun ProfileScreen(
                             Text(
                                 text = "Saved successfully!",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Success,
+                                color = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.padding(top = 4.dp).align(Alignment.CenterHorizontally)
                             )
                         }
@@ -209,6 +234,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.error.copy(alpha = 0.05f))
+                            .clickable { sessionViewModel.logout() }
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -225,9 +251,11 @@ fun ProfileScreen(
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.weight(1f)
                         )
-                        TextButton(onClick = { sessionViewModel.logout() }) {
-                            Text("CONFIRM", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Black)
-                        }
+                        Text(
+                            text = "CONFIRM",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black)
+                        )
                     }
 
                     // Branding Footer (Flat)
@@ -262,6 +290,86 @@ fun ProfileScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                             modifier = Modifier.padding(top = 16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PremiumSegmentedControl(
+    selectedMode: ThemeMode,
+    onModeSelected: (ThemeMode) -> Unit
+) {
+    val modes = ThemeMode.entries
+    val selectedIndex = modes.indexOf(selectedMode)
+    val isDark = isSystemInDarkTheme()
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDark) 0.5f else 0.7f))
+            .padding(4.dp)
+    ) {
+        val maxWidth = maxWidth
+        val itemWidth = maxWidth / modes.size
+        val indicatorOffset by animateDpAsState(
+            targetValue = itemWidth * selectedIndex,
+            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+            label = "indicator"
+        )
+
+        // Selection Indicator
+        Box(
+            modifier = Modifier
+                .offset(x = indicatorOffset)
+                .width(itemWidth)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(11.dp))
+                .background(MaterialTheme.colorScheme.primary)
+                .shadow(if (isDark) 0.dp else 4.dp, RoundedCornerShape(11.dp))
+        )
+
+        Row(modifier = Modifier.fillMaxSize()) {
+            modes.forEach { mode ->
+                val isSelected = selectedMode == mode
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onModeSelected(mode) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    val icon = when (mode) {
+                        ThemeMode.SYSTEM -> Icons.Rounded.SettingsSuggest
+                        ThemeMode.LIGHT -> Icons.Rounded.LightMode
+                        ThemeMode.DARK -> Icons.Rounded.DarkMode
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = mode.name.lowercase().replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.2.sp
+                            ),
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

@@ -19,6 +19,8 @@ import com.anish.owee.viewmodel.PendingPaymentViewModel
 import com.anish.owee.navigation.Route
 import com.anish.owee.navigation.Graph
 
+import com.anish.owee.viewmodel.ThemeViewModel
+
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -37,7 +39,10 @@ class MainActivity : ComponentActivity() {
         askNotificationPermission()
 
         setContent {
-            OweeTheme {
+            val themeViewModel: ThemeViewModel = viewModel()
+            val themeMode by themeViewModel.themeMode.collectAsState()
+
+            OweeTheme(themeMode = themeMode) {
                 val navController = rememberNavController()
                 
                 // Extract destination from intent if opened from notification
@@ -47,6 +52,8 @@ class MainActivity : ComponentActivity() {
 
                 RootNavGraph(
                     navController = navController,
+                    sessionViewModel = viewModel(),
+                    themeViewModel = themeViewModel,
                     startRoute = startRoute
                 )
             }

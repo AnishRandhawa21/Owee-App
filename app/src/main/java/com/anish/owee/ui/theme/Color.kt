@@ -35,3 +35,31 @@ val OutlineVariant = Color(0xFFF0EDED)
 // Misc
 val CardBackground = Color(0xFFFFFFFF)
 val ChipBackground = Color(0xFFF6F3F2)
+
+//Dark Theme
+
+val DarkPrimary = Color(0xFF3B82F6)              // Softer Blue
+val DarkPrimaryContainer = Color(0xFF173B73)
+
+val DarkBackground = Color(0xFF000000)           // Pure Black
+val DarkSurface = Color(0xFF111111)              // Cards
+val DarkSurfaceVariant = Color(0xFF1A1A1A)
+
+val DarkTextPrimary = Color(0xFFFFFFFF)
+val DarkTextSecondary = Color(0xFF9CA3AF)
+
+val DarkOutline = Color(0xFF2A2A2A)
+val DarkOutlineVariant = Color(0xFF1E1E1E)
+
+// Financial Colors
+val DarkSuccess = Color(0xFF22C55E)
+val DarkSuccessContainer = Color(0xFF0F2E1A)
+
+val DarkError = Color(0xFFEF4444)
+val DarkErrorContainer = Color(0xFF311111)
+
+val DarkWarning = Color(0xFFF59E0B)
+
+// Misc
+val DarkCardBackground = DarkSurface
+val DarkChipBackground = Color(0xFF1F1F1F)

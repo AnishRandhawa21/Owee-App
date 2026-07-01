@@ -12,13 +12,15 @@ import com.anish.owee.MainScreen
 import com.anish.owee.data.model.SessionState
 import com.anish.owee.ui.screen.auth.SplashScreen
 import com.anish.owee.viewmodel.SessionViewModel
+import com.anish.owee.viewmodel.ThemeViewModel
 import com.anish.owee.animations.NavAnimations
 import kotlinx.coroutines.delay
 
 @Composable
 fun RootNavGraph(
     navController: NavHostController,
-    sessionViewModel: SessionViewModel = viewModel(),
+    sessionViewModel: SessionViewModel,
+    themeViewModel: ThemeViewModel,
     startRoute: String? = null
 ) {
     val sessionState by sessionViewModel.sessionState.collectAsState()
@@ -112,7 +114,10 @@ fun RootNavGraph(
             }
         ) {
             composable(Route.Home.route) {
-                MainScreen(sessionViewModel)
+                MainScreen(
+                    sessionViewModel = sessionViewModel,
+                    themeViewModel = themeViewModel
+                )
             }
         }
     }

@@ -222,7 +222,6 @@ fun FriendsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
             ) {
                 // Fixed Header
                 Spacer(modifier = Modifier.height(24.dp))

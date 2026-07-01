@@ -1,11 +1,8 @@
 package com.anish.owee.viewmodel.state
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import com.anish.owee.ui.theme.Error
-import com.anish.owee.ui.theme.Success
-import com.anish.owee.ui.theme.TextSecondary
 import kotlin.math.abs
 
 sealed class BalanceState {
@@ -38,7 +35,7 @@ fun Double.toBalanceState(): BalanceState {
 
 @Composable
 fun BalanceState.color(): Color = when (this) {
-    is BalanceState.YouOwe -> Error
-    is BalanceState.OwesYou -> Success
-    is BalanceState.SettledUp -> TextSecondary
+    is BalanceState.YouOwe -> MaterialTheme.colorScheme.error
+    is BalanceState.OwesYou -> MaterialTheme.colorScheme.secondary
+    is BalanceState.SettledUp -> MaterialTheme.colorScheme.onSurfaceVariant
 }

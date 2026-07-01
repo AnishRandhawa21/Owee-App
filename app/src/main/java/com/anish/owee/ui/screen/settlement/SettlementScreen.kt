@@ -88,7 +88,6 @@ fun SettlementScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .navigationBarsPadding()
     ) {
         // Custom Top Bar

@@ -29,7 +29,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.anish.owee.ui.theme.*
 import com.anish.owee.viewmodel.SessionViewModel
 
 @Composable
@@ -71,11 +70,18 @@ fun UsernameSetupScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
     ) {
+        val primaryColor = MaterialTheme.colorScheme.primary
+        val textPrimaryColor = MaterialTheme.colorScheme.onBackground
+        val textSecondaryColor = MaterialTheme.colorScheme.onSurfaceVariant
+        val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+        val successColor = MaterialTheme.colorScheme.secondary
+        val errorColor = MaterialTheme.colorScheme.error
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -89,7 +95,7 @@ fun UsernameSetupScreen(
                     text = "Welcome to Owee",
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold,
-                        color = Primary,
+                        color = primaryColor,
                         letterSpacing = 1.sp
                     )
                 )
@@ -103,7 +109,7 @@ fun UsernameSetupScreen(
                         lineHeight = 44.sp,
                         letterSpacing = (-1.5).sp
                     ),
-                    color = TextPrimary
+                    color = textPrimaryColor
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -111,7 +117,7 @@ fun UsernameSetupScreen(
                 Text(
                     text = "Pick a unique username so friends can find you easily.",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = TextSecondary,
+                    color = textSecondaryColor,
                     lineHeight = 26.sp
                 )
             }
@@ -127,6 +133,10 @@ fun UsernameSetupScreen(
                     label = "Display Name",
                     placeholder = "Your full name",
                     isFocused = nameFocused,
+                    primaryColor = primaryColor,
+                    textPrimaryColor = textPrimaryColor,
+                    textSecondaryColor = textSecondaryColor,
+                    surfaceVariantColor = surfaceVariantColor,
                     modifier = Modifier
                         .focusRequester(nameFocusRequester)
                         .onFocusChanged { nameFocused = it.isFocused },
@@ -147,6 +157,11 @@ fun UsernameSetupScreen(
                     isFocused = usernameFocused,
                     prefix = "@",
                     errorMessage = usernameError,
+                    primaryColor = primaryColor,
+                    textPrimaryColor = textPrimaryColor,
+                    textSecondaryColor = textSecondaryColor,
+                    surfaceVariantColor = surfaceVariantColor,
+                    errorColor = errorColor,
                     modifier = Modifier
                         .focusRequester(usernameFocusRequester)
                         .onFocusChanged { usernameFocused = it.isFocused },
@@ -182,19 +197,19 @@ fun UsernameSetupScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Success.copy(alpha = 0.05f))
+                            .background(successColor.copy(alpha = 0.05f))
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.CheckCircle,
                             contentDescription = null,
-                            tint = Success,
+                            tint = successColor,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "@$username is available",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Success
+                            color = successColor
                         )
                     }
                 }
@@ -221,17 +236,17 @@ fun UsernameSetupScreen(
                         .height(60.dp),
                     shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Primary,
-                        contentColor = OnPrimary,
-                        disabledContainerColor = Primary.copy(alpha = 0.3f),
-                        disabledContentColor = OnPrimary.copy(alpha = 0.6f)
+                        containerColor = primaryColor,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = primaryColor.copy(alpha = 0.3f),
+                        disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
                     ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     if (isSaving) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = OnPrimary,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp
                         )
                     } else {
@@ -253,8 +268,13 @@ private fun OweeTextField(
     label: String,
     placeholder: String,
     isFocused: Boolean,
+    primaryColor: Color,
+    textPrimaryColor: Color,
+    textSecondaryColor: Color,
+    surfaceVariantColor: Color,
     modifier: Modifier = Modifier,
     prefix: String? = null,
+    errorColor: Color = Color.Red,
     errorMessage: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
@@ -263,7 +283,7 @@ private fun OweeTextField(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-            color = if (isFocused) Primary else TextSecondary
+            color = if (isFocused) primaryColor else textSecondaryColor
         )
 
         Surface(
@@ -271,7 +291,7 @@ private fun OweeTextField(
                 .fillMaxWidth()
                 .height(56.dp),
             shape = MaterialTheme.shapes.medium,
-            color = SurfaceVariant
+            color = surfaceVariantColor
         ) {
             Row(
                 modifier = Modifier
@@ -283,7 +303,7 @@ private fun OweeTextField(
                     Text(
                         text = prefix,
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        color = if (isFocused) Primary else TextSecondary,
+                        color = if (isFocused) primaryColor else textSecondaryColor,
                         modifier = Modifier.padding(end = 4.dp)
                     )
                 }
@@ -292,7 +312,7 @@ private fun OweeTextField(
                     onValueChange = onValueChange,
                     modifier = modifier.weight(1f),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = TextPrimary,
+                        color = textPrimaryColor,
                         fontWeight = FontWeight.SemiBold
                     ),
                     singleLine = true,
@@ -304,7 +324,7 @@ private fun OweeTextField(
                                 Text(
                                     text = placeholder,
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = TextSecondary.copy(alpha = 0.4f)
+                                    color = textSecondaryColor.copy(alpha = 0.4f)
                                 )
                             }
                             inner()
@@ -323,7 +343,7 @@ private fun OweeTextField(
                 Text(
                     text = errorMessage,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Error,
+                    color = errorColor,
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }

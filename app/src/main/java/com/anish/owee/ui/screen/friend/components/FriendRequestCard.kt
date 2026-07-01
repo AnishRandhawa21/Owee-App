@@ -15,9 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.anish.owee.ui.theme.ErrorContainer
-import com.anish.owee.ui.theme.SuccessContainer
-import com.anish.owee.ui.theme.TextSecondary
 
 @Composable
 fun FriendRequestCard(
@@ -60,7 +57,7 @@ fun FriendRequestCard(
                 Text(
                     text = "wants to be friends",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

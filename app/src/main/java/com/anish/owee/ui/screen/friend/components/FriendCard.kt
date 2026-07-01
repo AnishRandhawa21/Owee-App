@@ -21,9 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.anish.owee.data.model.User
-import com.anish.owee.ui.theme.TextSecondary
-import com.anish.owee.ui.theme.Success
-import com.anish.owee.ui.theme.Error
 import java.util.Locale
 import kotlin.math.abs
 
@@ -63,7 +60,7 @@ fun FriendCard(
             Text(
                 text = "@${friend.username}",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -71,8 +68,8 @@ fun FriendCard(
 
         if (balance != null && abs(balance) > 0.01) {
             val isOwed = balance > 0
-            val containerColor = if (isOwed) Success.copy(alpha = 0.1f) else Error.copy(alpha = 0.1f)
-            val contentColor = if (isOwed) Success else Error
+            val containerColor = if (isOwed) MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+            val contentColor = if (isOwed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
             
             Surface(
                 color = containerColor,
@@ -161,7 +158,7 @@ fun SearchResultCard(
             Text(
                 text = "@$username",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

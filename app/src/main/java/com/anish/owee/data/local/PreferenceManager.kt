@@ -133,6 +133,14 @@ class PreferenceManager(context: Context) {
         return prefs.getString("fcm_token", null)
     }
 
+    fun saveThemeMode(mode: String) {
+        prefs.edit().putString("theme_mode", mode).apply()
+    }
+
+    fun getThemeMode(): String {
+        return prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+    }
+
     fun savePendingPayment(payment: PendingPayment) {
         prefs.edit().putString("pending_payment", json.encodeToString(payment)).commit()
     }

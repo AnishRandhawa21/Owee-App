@@ -53,11 +53,16 @@ fun LoginScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent
     ) { padding ->
+        val primaryColor = MaterialTheme.colorScheme.primary
+        val successColor = MaterialTheme.colorScheme.secondary
+        val textPrimaryColor = MaterialTheme.colorScheme.onBackground
+        val textSecondaryColor = MaterialTheme.colorScheme.onSurfaceVariant
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Background)
-                .drawBehind { drawAmbientBlobs(blobProgress) }
+                .background(MaterialTheme.colorScheme.background)
+                .drawBehind { drawAmbientBlobs(blobProgress, primaryColor, successColor) }
                 .padding(padding)
         ) {
             Column(
@@ -76,7 +81,7 @@ fun LoginScreen(
                             letterSpacing = 4.sp,
                             fontSize = 42.sp
                         ),
-                        color = Primary
+                        color = primaryColor
                     )
 
                     Spacer(Modifier.height(48.dp))
@@ -88,7 +93,7 @@ fun LoginScreen(
                             lineHeight = 44.sp,
                             letterSpacing = (-1.5).sp
                         ),
-                        color = TextPrimary
+                        color = textPrimaryColor
                     )
 
                     Spacer(Modifier.height(16.dp))
@@ -96,7 +101,7 @@ fun LoginScreen(
                     Text(
                         text = "The simplest way to track shared expenses and settle up instantly.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = TextSecondary,
+                        color = textSecondaryColor,
                         lineHeight = 26.sp
                     )
                 }
@@ -108,6 +113,8 @@ fun LoginScreen(
                 ) {
                     GoogleSignInButton(
                         isLoading = sessionState is SessionState.Loading,
+                        primaryColor = primaryColor,
+                        textPrimaryColor = textPrimaryColor,
                         onClick = {
                             coroutineScope.launch {
                                 googleAuthManager.signIn().fold(
@@ -130,7 +137,7 @@ fun LoginScreen(
                     Text(
                         text = "By continuing, you agree to our Terms and Privacy Policy.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary.copy(alpha = 0.6f),
+                        color = textSecondaryColor.copy(alpha = 0.6f),
                         textAlign = TextAlign.Center
                     )
                 }
@@ -142,6 +149,8 @@ fun LoginScreen(
 @Composable
 private fun GoogleSignInButton(
     isLoading: Boolean,
+    primaryColor: Color,
+    textPrimaryColor: Color,
     onClick: () -> Unit
 ) {
     Surface(
@@ -150,14 +159,14 @@ private fun GoogleSignInButton(
             .fillMaxWidth()
             .height(60.dp),
         shape = MaterialTheme.shapes.medium,
-        color = SurfaceVariant, // Flat grey background
+        color = MaterialTheme.colorScheme.surfaceVariant, // Flat grey background
         shadowElevation = 0.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color = Primary,
+                    color = primaryColor,
                     strokeWidth = 2.dp
                 )
             } else {
@@ -176,7 +185,7 @@ private fun GoogleSignInButton(
                     Text(
                         text = "Get Started with Google",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
+                        color = textPrimaryColor
                     )
                 }
             }
@@ -184,12 +193,12 @@ private fun GoogleSignInButton(
     }
 }
 
-private fun DrawScope.drawAmbientBlobs(progress: Float) {
+private fun DrawScope.drawAmbientBlobs(progress: Float, primaryColor: Color, successColor: Color) {
     val cx = size.width * 0.85f + progress * 30.dp.toPx()
     val cy = size.height * 0.15f - progress * 20.dp.toPx()
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(Primary.copy(alpha = 0.12f), Color.Transparent),
+            colors = listOf(primaryColor.copy(alpha = 0.12f), Color.Transparent),
             center = Offset(cx, cy),
             radius = 300.dp.toPx()
         ),
@@ -200,7 +209,7 @@ private fun DrawScope.drawAmbientBlobs(progress: Float) {
     val by = size.height * 0.75f
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(Success.copy(alpha = 0.08f), Color.Transparent),
+            colors = listOf(successColor.copy(alpha = 0.08f), Color.Transparent),
             center = Offset(bx, by),
             radius = 240.dp.toPx()
         ),

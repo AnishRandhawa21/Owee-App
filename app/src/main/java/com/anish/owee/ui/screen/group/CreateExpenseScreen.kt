@@ -94,8 +94,7 @@ fun CreateExpenseScreen(
             // Main content remains scrollable
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding(),
+                    .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {

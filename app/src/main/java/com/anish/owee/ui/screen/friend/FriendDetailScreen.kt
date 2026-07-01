@@ -93,9 +93,9 @@ fun FriendDetailScreen(
     if (activityToDelete != null) {
         AlertDialog(
             onDismissRequest = { activityToDelete = null },
-            containerColor = Color.White,
-            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold) },
-            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -153,7 +153,7 @@ fun FriendDetailScreen(
                     Text(
                         text = "Friend not found",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -170,7 +170,6 @@ fun FriendDetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .statusBarsPadding()
                     ) {
                         // Fixed Header
                         Row(
@@ -222,7 +221,7 @@ fun FriendDetailScreen(
                                     Text(
                                         text = "@${friend.username}",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = TextSecondary
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -329,7 +328,7 @@ fun FriendDetailScreen(
                                                 DropdownMenu(
                                                     expanded = activityMenuAnchor?.id == activity.id,
                                                     onDismissRequest = { activityMenuAnchor = null },
-                                                    containerColor = Color.White
+                                                    containerColor = MaterialTheme.colorScheme.surface
                                                 ) {
                                                     DropdownMenuItem(
                                                         text = { Text("Delete Expense", color = MaterialTheme.colorScheme.error) },
@@ -361,7 +360,7 @@ fun FriendDetailScreen(
                                         onClick = { onViewHistoryClick(friend.id, friend.displayName) },
                                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                                     ) {
-                                        Text("View Full History", fontWeight = FontWeight.Bold, color = TextSecondary)
+                                        Text("View Full History", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
@@ -436,7 +435,7 @@ private fun RecentActivityEmptyState() {
                 imageVector = Icons.Rounded.ReceiptLong,
                 contentDescription = null,
                 modifier = Modifier.size(36.dp),
-                tint = TextSecondary.copy(alpha = 0.5f)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
             Text(
                 text = "No activity yet",
@@ -446,7 +445,7 @@ private fun RecentActivityEmptyState() {
             Text(
                 text = "Expenses you add together will show up here",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }

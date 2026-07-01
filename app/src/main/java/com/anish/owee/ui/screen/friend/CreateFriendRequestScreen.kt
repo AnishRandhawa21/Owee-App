@@ -85,7 +85,6 @@ fun CreateFriendRequestScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 140.dp), // Increased padding for bottom button
             horizontalAlignment = Alignment.CenterHorizontally

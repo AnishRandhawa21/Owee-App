@@ -201,8 +201,7 @@ fun GroupsScreen(
 
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
+                    .fillMaxSize(),
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(

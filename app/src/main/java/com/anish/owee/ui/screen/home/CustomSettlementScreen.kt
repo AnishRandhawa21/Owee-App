@@ -101,7 +101,6 @@ fun CustomSettlementScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
         ) {
             // Header
             Row(
@@ -173,7 +172,7 @@ fun CustomSettlementScreen(
                         text = "₹${String.format(Locale.US, "%.2f", abs(uiState.totalDebt))}",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Black,
-                            color = if (isOwedByThem) Success else Error
+                            color = if (isOwedByThem) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
                         )
                     )
                 }
@@ -206,7 +205,7 @@ fun CustomSettlementScreen(
                         textStyle = MaterialTheme.typography.displayLarge.copy(
                             fontSize = 48.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (exceedsDebt) Error else MaterialTheme.colorScheme.onSurface,
+                            color = if (exceedsDebt) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Start
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -236,7 +235,7 @@ fun CustomSettlementScreen(
                     Text(
                         text = "Cannot exceed total debt",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Error,
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )
                 }

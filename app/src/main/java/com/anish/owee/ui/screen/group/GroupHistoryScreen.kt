@@ -87,7 +87,6 @@ fun GroupHistoryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
         ) {
             // Header
             Row(

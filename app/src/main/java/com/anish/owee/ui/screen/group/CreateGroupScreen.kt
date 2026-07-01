@@ -73,7 +73,6 @@ fun CreateGroupScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
             ) {
                 // Header
                 Row(

@@ -26,11 +26,13 @@ import com.anish.owee.ui.components.BottomNavigationBar
 import com.anish.owee.ui.components.SwipeToSettleSheet
 import com.anish.owee.viewmodel.PendingPaymentViewModel
 import com.anish.owee.viewmodel.SessionViewModel
+import com.anish.owee.viewmodel.ThemeViewModel
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainScreen(
-    sessionViewModel: SessionViewModel
+    sessionViewModel: SessionViewModel,
+    themeViewModel: ThemeViewModel
 ) {
     val context = LocalContext.current
     val navController = rememberNavController()
@@ -100,13 +102,12 @@ fun MainScreen(
             }
         }
     ) { paddingValues ->
-        // To achieve the "Floating" effect where content flows behind the bar,
-        // we don't apply the bottom padding from the scaffold to the MainNavGraph.
         SharedTransitionLayout {
             Box(modifier = Modifier.fillMaxSize()) {
                 MainNavGraph(
                     navController = navController,
                     sessionViewModel = sessionViewModel,
+                    themeViewModel = themeViewModel,
                     snackbarHostState = snackbarHostState,
                     sharedTransitionScope = this@SharedTransitionLayout,
                     modifier = Modifier.fillMaxSize()

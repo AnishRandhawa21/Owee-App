@@ -75,7 +75,7 @@ fun SettlementBottomSheet(
                     label = "You requested",
                     amount = requestedByMe.toInt(),
                     icon = Icons.Rounded.NorthEast,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.secondary
                 )
 
                 Box(
@@ -98,7 +98,7 @@ fun SettlementBottomSheet(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
-                color = (if (isSettled) MaterialTheme.colorScheme.surfaceVariant else if (isOwedByFriend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error).copy(alpha = 0.1f)
+                color = (if (isSettled) MaterialTheme.colorScheme.surfaceVariant else if (isOwedByFriend) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error).copy(alpha = 0.1f)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -107,7 +107,7 @@ fun SettlementBottomSheet(
                     Text(
                         text = if (isSettled) "All Caught Up" else "Net Balance",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = (if (isSettled) MaterialTheme.colorScheme.onSurfaceVariant else if (isOwedByFriend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error).copy(alpha = 0.7f)
+                        color = (if (isSettled) MaterialTheme.colorScheme.onSurfaceVariant else if (isOwedByFriend) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error).copy(alpha = 0.7f)
                     )
                     
                     Spacer(Modifier.height(8.dp))
@@ -118,7 +118,7 @@ fun SettlementBottomSheet(
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = (-1).sp
                         ),
-                        color = if (isSettled) MaterialTheme.colorScheme.onSurface else if (isOwedByFriend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        color = if (isSettled) MaterialTheme.colorScheme.onSurface else if (isOwedByFriend) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
                     )
 
                     Spacer(Modifier.height(12.dp))

@@ -81,9 +81,9 @@ fun GroupDetailScreen(
     if (expenseToDelete != null) {
         AlertDialog(
             onDismissRequest = { expenseToDelete = null },
-            containerColor = Color.White,
-            title = { Text("Delete Expense?", fontWeight = FontWeight.ExtraBold) },
-            text = { Text("Are you sure you want to delete this expense? All balances in this group will be updated.") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Delete Expense?", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text("Are you sure you want to delete this expense? All balances in this group will be updated.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -152,7 +152,6 @@ fun GroupDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
             ) {
                 // Fixed Header
                 Row(
@@ -268,7 +267,7 @@ fun GroupDetailScreen(
                                             DropdownMenu(
                                                 expanded = expenseMenuAnchor?.id == expense.id,
                                                 onDismissRequest = { expenseMenuAnchor = null },
-                                                containerColor = Color.White
+                                                containerColor = MaterialTheme.colorScheme.surface
                                             ) {
                                                 DropdownMenuItem(
                                                     text = { Text("Delete Expense", color = MaterialTheme.colorScheme.error) },
@@ -411,13 +410,20 @@ fun GroupSummaryPremium(balances: List<GroupMemberBalance>, totalSpent: Double) 
     val totalOwe = balances.filter { it.amount < 0 }.sumOf { abs(it.amount) }
     val netBalance = totalOwed - totalOwe
 
+    val isDark = MaterialTheme.colorScheme.background == Color.Black
+    val cardColor = if (isDark) {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    } else {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(20.dp),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
-        border = null
+        color = cardColor,
+        shadowElevation = 0.dp
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(
@@ -460,7 +466,6 @@ fun GroupSummaryPremium(balances: List<GroupMemberBalance>, totalSpent: Double) 
                             else -> MaterialTheme.colorScheme.onSurface
                         }
                     )
-                    
                     Text(
                         text = "₹${"%.0f".format(totalOwed)} / ₹${"%.0f".format(totalSpent)} spent",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -502,10 +507,11 @@ fun SummaryIndicator(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background == Color.Black
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.medium,
-        color = Color.White.copy(alpha = 0.5f)
+        color = if (isDark) MaterialTheme.colorScheme.surfaceVariant else Color.White
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -623,7 +629,7 @@ fun BalanceItemFlat(memberName: String, photoUrl: String?, amount: Double, onCli
     }
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ExpenseItemFlat(expense: Expense, payerName: String, onClick: () -> Unit, onLongClick: () -> Unit = {}) {
     Row(

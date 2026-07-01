@@ -19,6 +19,7 @@ import com.anish.owee.ui.screen.home.CustomSettlementScreen
 import com.anish.owee.ui.screen.home.HomeScreen
 import com.anish.owee.ui.screen.profile.ProfileScreen
 import com.anish.owee.viewmodel.SessionViewModel
+import com.anish.owee.viewmodel.ThemeViewModel
 import com.anish.owee.ui.screen.settlement.SettlementScreen
 import com.anish.owee.animations.NavAnimations
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -30,6 +31,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 fun MainNavGraph(
     navController: NavHostController,
     sessionViewModel: SessionViewModel,
+    themeViewModel: ThemeViewModel,
     snackbarHostState: SnackbarHostState,
     sharedTransitionScope: SharedTransitionScope,
     modifier: Modifier = Modifier
@@ -268,7 +270,10 @@ fun MainNavGraph(
         }
 
         composable(Route.Profile.route) {
-            ProfileScreen(sessionViewModel)
+            ProfileScreen(
+                sessionViewModel = sessionViewModel,
+                themeViewModel = themeViewModel
+            )
         }
     }
 }

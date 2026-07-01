@@ -40,8 +40,6 @@ import com.anish.owee.viewmodel.state.UserTotalBalance
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.anish.owee.ui.theme.Success
-import com.anish.owee.ui.theme.Error
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -89,7 +87,6 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
         ) {
             // Fixed Header
             Spacer(modifier = Modifier.height(24.dp))
@@ -221,7 +218,9 @@ fun PeopleSummaryStory(
     onClick: () -> Unit
 ) {
     val isOwed = userBalance.balance > 0.01
-    val borderColor = if (isOwed) Success else Error
+    val successColor = MaterialTheme.colorScheme.secondary
+    val errorColor = MaterialTheme.colorScheme.error
+    val borderColor = if (isOwed) successColor else errorColor
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -273,7 +272,7 @@ fun PeopleSummaryStory(
                         fontWeight = FontWeight.Black,
                         fontSize = 9.sp
                     ),
-                    color = Color.White,
+                    color = if (isOwed) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onError,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                 )
             }

@@ -8,6 +8,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.anish.owee.MainScreen
 import com.anish.owee.data.model.SessionState
 import com.anish.owee.ui.screen.auth.SplashScreen
@@ -29,16 +30,18 @@ fun RootNavGraph(
 
     val isReadyToNavigate = sessionState !is SessionState.Loading && isMinSplashTimePassed
 
+    // Get current route reactively
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     LaunchedEffect(Unit) {
         delay(1500) // Minimum splash duration
         isMinSplashTimePassed = true
     }
 
-    LaunchedEffect(sessionState, isSplashFinished) {
+    LaunchedEffect(sessionState, isSplashFinished, currentRoute) {
         // Global navigation handler for session state changes
-        // This handles cases like auto-login after splash or logout from any screen
-        val currentRoute = navController.currentBackStackEntry?.destination?.route
-
+        
         // Wait for session to load
         if (sessionState is SessionState.Loading) return@LaunchedEffect
 
@@ -47,9 +50,9 @@ fun RootNavGraph(
 
         when (sessionState) {
             SessionState.Unauthenticated -> {
-                if (currentRoute != Route.Login.route) {
+                if (currentRoute != Route.Login.route && currentRoute != Route.Splash.route) {
                     navController.navigate(Graph.AUTH) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
                 }
             }
@@ -68,9 +71,14 @@ fun RootNavGraph(
                     Graph.MAIN
                 }
 
-                if (currentRoute != Route.Home.route && currentRoute != null) {
+                // Navigate if we are not already on a main screen route
+                // (Checking for Home is usually enough as it's the start destination of MAIN)
+                if (currentRoute != Route.Home.route && currentRoute != Route.Splash.route && currentRoute != Route.Login.route && currentRoute != Route.UsernameSetup.route) {
+                    // This case handles deep links or other authenticated states
+                    // but we don't want to re-trigger if already in MAIN
+                } else if (currentRoute == Route.Splash.route || currentRoute == Route.Login.route || currentRoute == Route.UsernameSetup.route) {
                     navController.navigate(destination) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
                 }
             }

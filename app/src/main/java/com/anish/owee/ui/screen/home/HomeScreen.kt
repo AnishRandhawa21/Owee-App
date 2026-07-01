@@ -89,7 +89,7 @@ fun HomeScreen(
                 .fillMaxSize()
         ) {
             // Fixed Header
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             Text(
                 text = "Dashboard",
                 style = MaterialTheme.typography.displaySmall.copy(

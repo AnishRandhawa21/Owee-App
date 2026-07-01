@@ -74,8 +74,6 @@ fun RootNavGraph(
                 // Navigate if we are not already on a main screen route
                 // (Checking for Home is usually enough as it's the start destination of MAIN)
                 if (currentRoute != Route.Home.route && currentRoute != Route.Splash.route && currentRoute != Route.Login.route && currentRoute != Route.UsernameSetup.route) {
-                    // This case handles deep links or other authenticated states
-                    // but we don't want to re-trigger if already in MAIN
                 } else if (currentRoute == Route.Splash.route || currentRoute == Route.Login.route || currentRoute == Route.UsernameSetup.route) {
                     navController.navigate(destination) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }

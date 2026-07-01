@@ -88,6 +88,7 @@ fun GroupHistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
+            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             // Header
             Row(
                 modifier = Modifier

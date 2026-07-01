@@ -203,7 +203,7 @@ fun GroupsScreen(
                 modifier = Modifier
                     .fillMaxSize(),
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Text(
                     text = "Groups",
                     style = MaterialTheme.typography.displaySmall.copy(

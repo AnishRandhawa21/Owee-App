@@ -98,6 +98,9 @@ fun CreateExpenseScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
+                item {
+                    Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                }
                 // Header
                 item {
                     Row(

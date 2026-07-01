@@ -153,6 +153,7 @@ fun GroupDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
             ) {
+                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 // Fixed Header
                 Row(
                     modifier = Modifier

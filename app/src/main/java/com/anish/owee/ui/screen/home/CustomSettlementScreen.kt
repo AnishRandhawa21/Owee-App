@@ -102,6 +102,7 @@ fun CustomSettlementScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
+            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             // Header
             Row(
                 modifier = Modifier

@@ -74,6 +74,7 @@ fun CreateGroupScreen(
                 modifier = Modifier
                     .fillMaxSize()
             ) {
+                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 // Header
                 Row(
                     modifier = Modifier
@@ -190,7 +191,6 @@ fun CreateGroupScreen(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .navigationBarsPadding() // Fixed hiding behind nav bar
                     .padding(24.dp)
             ) {
                 Button(

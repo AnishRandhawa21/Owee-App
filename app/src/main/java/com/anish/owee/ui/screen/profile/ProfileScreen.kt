@@ -35,6 +35,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.anish.owee.ui.theme.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import com.anish.owee.ui.components.ThemeRevealEffect
 import com.anish.owee.viewmodel.ProfileViewModel
 import com.anish.owee.viewmodel.SessionViewModel
 import com.anish.owee.viewmodel.ThemeViewModel
@@ -51,6 +55,17 @@ fun ProfileScreen(
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    var revealOffset by remember { mutableStateOf<Offset?>(null) }
+    val currentThemeBackground = MaterialTheme.colorScheme.background
+    var activeBackground by remember { mutableStateOf(currentThemeBackground) }
+    var isAnimating by remember { mutableStateOf(false) }
+
+    LaunchedEffect(currentThemeBackground) {
+        if (!isAnimating) {
+            activeBackground = currentThemeBackground
+        }
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -105,8 +120,18 @@ fun ProfileScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(activeBackground)
     ) {
+        ThemeRevealEffect(
+            themeMode = themeMode,
+            clickOffset = revealOffset,
+            onAnimationFinished = {
+                activeBackground = currentThemeBackground
+                isAnimating = false
+                revealOffset = null
+            }
+        )
+
         // --- Status Bar Loading ---
         AnimatedVisibility(
             visible = uiState.isLoading || uiState.isSaving,
@@ -123,8 +148,8 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-            
+            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+
             // Fixed Flat Title
             Text(
                 text = "Profile",
@@ -194,7 +219,13 @@ fun ProfileScreen(
                     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                         PremiumSegmentedControl(
                             selectedMode = themeMode,
-                            onModeSelected = { themeViewModel.setThemeMode(it) }
+                            onModeSelected = { mode, offset ->
+                                if (mode != themeMode) {
+                                    isAnimating = true
+                                    revealOffset = offset
+                                    themeViewModel.setThemeMode(mode)
+                                }
+                            }
                         )
                     }
 
@@ -339,16 +370,20 @@ fun ProfileScreen(
 @Composable
 fun PremiumSegmentedControl(
     selectedMode: ThemeMode,
-    onModeSelected: (ThemeMode) -> Unit
+    onModeSelected: (ThemeMode, Offset) -> Unit
 ) {
     val modes = ThemeMode.entries
     val selectedIndex = modes.indexOf(selectedMode)
     val isDark = isSystemInDarkTheme()
+    var componentOffset by remember { mutableStateOf(Offset.Zero) }
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
+            .onGloballyPositioned {
+                componentOffset = it.positionInRoot()
+            }
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDark) 0.5f else 0.7f))
             .padding(4.dp)
@@ -375,14 +410,25 @@ fun PremiumSegmentedControl(
         Row(modifier = Modifier.fillMaxSize()) {
             modes.forEach { mode ->
                 val isSelected = selectedMode == mode
+                var buttonCenter by remember { mutableStateOf(Offset.Zero) }
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
+                        .onGloballyPositioned {
+                            val bounds = it.positionInRoot()
+                            buttonCenter = Offset(
+                                bounds.x + it.size.width / 2f,
+                                bounds.y + it.size.height / 2f
+                            )
+                        }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { onModeSelected(mode) },
+                        ) {
+                            onModeSelected(mode, buttonCenter)
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     val icon = when (mode) {

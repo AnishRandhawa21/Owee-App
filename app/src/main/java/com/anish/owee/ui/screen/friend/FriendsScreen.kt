@@ -224,7 +224,7 @@ fun FriendsScreen(
                     .fillMaxSize()
             ) {
                 // Fixed Header
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Text(
                     text = "Friends",
                     style = MaterialTheme.typography.displaySmall.copy(

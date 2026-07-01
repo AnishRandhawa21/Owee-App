@@ -89,6 +89,7 @@ fun CreateFriendRequestScreen(
                 .padding(bottom = 140.dp), // Increased padding for bottom button
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             // Header
             Row(
                 modifier = Modifier

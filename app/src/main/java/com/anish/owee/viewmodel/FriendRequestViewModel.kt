@@ -140,17 +140,17 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                     val displayStatus = if (isOwedToMe) {
                         val amountCovered = kotlin.math.min(request.amount, creditToApplyToMyRequests)
                         creditToApplyToMyRequests -= amountCovered
-                        if (amountCovered >= request.amount - 0.01) "paid" else request.status
+                        if (amountCovered >= request.amount - 0.01) "paid" else "owes you"
                     } else {
                         val amountCovered = kotlin.math.min(request.amount, creditToApplyToFriendRequests)
                         creditToApplyToFriendRequests -= amountCovered
-                        if (amountCovered >= request.amount - 0.01) "paid" else request.status
+                        if (amountCovered >= request.amount - 0.01) "paid" else "you owe"
                     }
 
                     activities.add(
                         FriendActivity(
                             id = request.id,
-                            title = if (isOwedToMe) "You requested" else "Requested from you",
+                            title = if (isOwedToMe) "Settlement request" else "Requested repayment",
                             note = request.note,
                             amount = request.amount,
                             status = displayStatus,
@@ -165,7 +165,7 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                     activities.add(
                         FriendActivity(
                             id = settlement.id,
-                            title = if (settlement.payerId == currentUserId) "You paid" else "You received",
+                            title = if (settlement.payerId == currentUserId) "Settlement completed" else "Payment received",
                             note = "Settlement via UPI",
                             amount = settlement.amount,
                             status = "paid",

@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material3.*
@@ -94,8 +96,19 @@ fun FriendDetailScreen(
         AlertDialog(
             onDismissRequest = { activityToDelete = null },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface) },
-            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            title = {
+                Text(
+                    "Delete Expense?",
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    "Are you sure you want to delete this expense? This will recalculate the balance.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -260,6 +273,7 @@ fun FriendDetailScreen(
 
                             // Primary actions
                             item {
+                                val showSettleButton = requestUiState.balance < -0.01
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -268,20 +282,39 @@ fun FriendDetailScreen(
                                         onClick = { onRequestMoneyClick(friend.id, friend.displayName) },
                                         modifier = Modifier.weight(1f).height(52.dp),
                                         shape = MaterialTheme.shapes.medium,
-                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (showSettleButton) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
+                                            contentColor = if (showSettleButton) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
+                                        ),
                                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                                     ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Add,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
                                         Text("Request", fontWeight = FontWeight.Bold)
                                     }
 
-                                    if (requestUiState.balance < -0.01) {
-                                        OutlinedButton(
+                                    if (showSettleButton) {
+                                        Button(
                                             onClick = { showSettlementSheet = true },
                                             modifier = Modifier.weight(1f).height(52.dp),
                                             shape = MaterialTheme.shapes.medium,
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.error,
+                                                contentColor = MaterialTheme.colorScheme.onError
+                                            ),
+                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                                         ) {
-                                            Text("Settle Up", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            Icon(
+                                                imageVector = Icons.Rounded.CheckCircle,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Settle Up", fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -443,7 +476,7 @@ private fun RecentActivityEmptyState() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Expenses you add together will show up here",
+                text = "Settlements you add together will show up here",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center

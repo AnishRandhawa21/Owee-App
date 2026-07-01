@@ -104,7 +104,7 @@ fun CreateFriendRequestScreen(
                     )
                 }
                 Text(
-                    text = "Request Money",
+                    text = "Settlement Request",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 22.sp
@@ -117,7 +117,7 @@ fun CreateFriendRequestScreen(
 
             // Recipient Section
             Text(
-                text = "Requesting from",
+                text = "Repayment from",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -272,7 +272,7 @@ fun CreateFriendRequestScreen(
                     )
                 } else {
                     Text(
-                        text = if (hasAmount) "Send Request" else "Enter Details",
+                        text = if (hasAmount) "Send Settlement Request" else "Enter Details",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }

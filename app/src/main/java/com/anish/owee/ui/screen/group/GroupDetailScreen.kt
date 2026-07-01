@@ -481,7 +481,7 @@ fun GroupSummaryPremium(balances: List<GroupMemberBalance>, totalSpent: Double) 
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SummaryIndicator(
-                    label = "You are owed",
+                    label = "Owes you",
                     amount = totalOwed,
                     color = MaterialTheme.colorScheme.primary,
                     icon = Icons.AutoMirrored.Rounded.TrendingUp,

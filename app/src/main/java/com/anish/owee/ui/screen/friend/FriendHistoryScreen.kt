@@ -42,8 +42,19 @@ fun FriendHistoryScreen(
         AlertDialog(
             onDismissRequest = { activityToDelete = null },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Delete Entry?", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface) },
-            text = { Text("Are you sure you want to delete this entry? This will also update the total balance.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            title = {
+                Text(
+                    "Delete Expense?",
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    "Are you sure you want to delete this expense? This will recalculate the balance.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {

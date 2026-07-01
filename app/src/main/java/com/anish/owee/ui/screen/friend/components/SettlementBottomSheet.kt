@@ -72,7 +72,7 @@ fun SettlementBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SettlementItem(
-                    label = "You requested",
+                    label = "Settlement request",
                     amount = requestedByMe.toInt(),
                     icon = Icons.Rounded.NorthEast,
                     color = MaterialTheme.colorScheme.secondary
@@ -85,7 +85,7 @@ fun SettlementBottomSheet(
                 )
 
                 SettlementItem(
-                    label = "$friendName requested",
+                    label = "$friendName requested repayment",
                     amount = requestedByFriend.toInt(),
                     icon = Icons.Rounded.SouthWest,
                     color = MaterialTheme.colorScheme.error
@@ -138,7 +138,7 @@ fun SettlementBottomSheet(
                             text = when {
                                 balance > 0 -> "$friendName owes you ₹${"%.2f".format(absBalance)}"
                                 balance < 0 -> "You owe $friendName ₹${"%.2f".format(absBalance)}"
-                                else -> "No pending requests"
+                                else -> "No pending settlements"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -230,6 +230,17 @@ fun CreateExpenseScreen(
 
                 // --- Split Toggle ---
                 item {
+                    val equalSplitColor by animateColorAsState(
+                        targetValue = if (!uiState.isCustomSplit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        animationSpec = tween(300),
+                        label = "equalSplitColor"
+                    )
+                    val customSplitColor by animateColorAsState(
+                        targetValue = if (uiState.isCustomSplit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        animationSpec = tween(300),
+                        label = "customSplitColor"
+                    )
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -240,8 +251,7 @@ fun CreateExpenseScreen(
                         Text(
                             text = "Split equally",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (!uiState.isCustomSplit) FontWeight.Bold else FontWeight.Normal,
-                            color = if (!uiState.isCustomSplit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = equalSplitColor
                         )
                         
                         Switch(
@@ -258,17 +268,20 @@ fun CreateExpenseScreen(
                         Text(
                             text = "Custom split",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (uiState.isCustomSplit) FontWeight.Bold else FontWeight.Normal,
-                            color = if (uiState.isCustomSplit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = customSplitColor
                         )
                     }
                     
-                    if (uiState.error != null) {
+                    AnimatedVisibility(
+                        visible = uiState.error != null,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
                         Text(
-                            text = uiState.error!!,
+                            text = uiState.error ?: "",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp, start = 24.dp, end = 24.dp)
                         )
                     }
                     
@@ -400,7 +413,13 @@ fun ParticipantSelectionItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(horizontal = 24.dp, vertical = 12.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Avatar
@@ -442,35 +461,47 @@ fun ParticipantSelectionItem(
             )
         }
 
-        if (isCustomSplit && isSelected) {
-            TextField(
-                value = customAmount,
-                onValueChange = {
-                    if (it.isEmpty() || it.toDoubleOrNull() != null && it.toDouble() >= 0) {
-                        onAmountChange(it)
-                    }
-                },
-                modifier = Modifier.width(80.dp),
-                placeholder = { Text("0", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)) },
-                prefix = { Text("₹", style = MaterialTheme.typography.bodyMedium) },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = Color.Transparent
+        AnimatedContent(
+            targetState = isCustomSplit && isSelected,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(220, delayMillis = 90)) + 
+                 scaleIn(initialScale = 0.92f, animationSpec = tween(220, delayMillis = 90)))
+                    .togetherWith(fadeOut(animationSpec = tween(90)))
+            },
+            label = "splitModeTransition"
+        ) { showTextField ->
+            if (showTextField) {
+                TextField(
+                    value = customAmount,
+                    onValueChange = {
+                        if (it.isEmpty() || it.toDoubleOrNull() != null && it.toDouble() >= 0) {
+                            onAmountChange(it)
+                        }
+                    },
+                    modifier = Modifier.width(100.dp),
+                    placeholder = { Text("0", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)) },
+                    prefix = { Text("₹", style = MaterialTheme.typography.bodyMedium) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = MaterialTheme.shapes.small,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    )
                 )
-            )
-        } else {
-            // Selection Indicator
-            Icon(
-                imageVector = if (isSelected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                modifier = Modifier.size(24.dp)
-            )
+            } else {
+                // Selection Indicator
+                Icon(
+                    imageVector = if (isSelected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }

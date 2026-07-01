@@ -138,13 +138,13 @@ class CreateFriendRequestViewModel : ViewModel() {
                             senderId = currentUser?.id ?: "",
                             receiverId = friendId,
                             type = "money_request",
-                            title = "Money Request",
-                            body = "${currentUser?.displayName} requested ₹${String.format(Locale.US, "%.2f", amount)} for \"${uiState.value.note.ifBlank { "Money Request" }}\"",
+                            title = "Settlement Request",
+                            body = "${currentUser?.displayName} requested repayment of ₹${String.format(Locale.US, "%.2f", amount)} for \"${uiState.value.note.ifBlank { "Expense" }}\"",
                             data = buildJsonObject {
                                 put("type", "money_request")
                                 put("payer_name", currentUser?.displayName ?: "Someone")
                                 put("amount", amount)
-                                put("expense_title", uiState.value.note.ifBlank { "Money Request" })
+                                put("expense_title", uiState.value.note.ifBlank { "Settlement" })
                                 currentUser?.photoUrl?.let { put("sender_photo", it) }
                             }
                         )

@@ -332,9 +332,9 @@ fun TotalBalanceCard(totalBalance: Double) {
             )
             
             val statusText = when {
-                totalBalance > 0.01 -> "You are owed in total"
+                totalBalance > 0.01 -> "Owes you in total"
                 totalBalance < -0.01 -> "You owe in total"
-                else -> "You're all settled up!"
+                else -> "All settled up!"
             }
             
             Text(
@@ -398,7 +398,7 @@ fun BalanceSummarySmall(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = if (amount >= 0) "Owed" else "Owe",
+                    text = if (amount >= 0) "Owes you" else "You owe",
                     style = MaterialTheme.typography.labelSmall,
                     color = if (amount >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )

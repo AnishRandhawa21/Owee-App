@@ -32,8 +32,8 @@ class PaymentReminderWorker(
         if (pendingPayment != null) {
             showNotification(
                 applicationContext,
-                "Forgot to settle?",
-                "Swipe to confirm your ₹${String.format(Locale.getDefault(), "%.2f", pendingPayment.amount)} payment to ${pendingPayment.recipientName}"
+                "Complete your settlement",
+                "Confirm your repayment of ₹${String.format(Locale.getDefault(), "%.2f", pendingPayment.amount)} to ${pendingPayment.recipientName}"
             )
         }
 

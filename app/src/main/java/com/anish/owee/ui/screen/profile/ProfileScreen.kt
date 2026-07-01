@@ -50,6 +50,44 @@ fun ProfileScreen(
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     val context = LocalContext.current
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = {
+                Text(
+                    text = "Logout",
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "Log out of your account? You'll need to sign in again to continue using OWEE.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        sessionViewModel.logout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Logout", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        )
+    }
 
     val versionName = remember {
         try {
@@ -234,7 +272,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.error.copy(alpha = 0.05f))
-                            .clickable { sessionViewModel.logout() }
+                            .clickable { showLogoutDialog = true }
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -252,7 +290,7 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "CONFIRM",
+                            text = "LOGOUT",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Black)
                         )

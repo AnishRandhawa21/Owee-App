@@ -1,60 +1,53 @@
 package com.anish.owee.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import com.anish.owee.ui.theme.ThemeMode
-import kotlinx.coroutines.launch
 
 @Composable
 fun ThemeRevealEffect(
     themeMode: ThemeMode,
+    targetColor: Color,
     clickOffset: Offset?,
     onAnimationFinished: () -> Unit
 ) {
     val radius = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    var revealColor by remember { mutableStateOf(Color.Transparent) }
-    var revealCenter by remember { mutableStateOf(Offset.Zero) }
     
-    // We use the current background color from the theme.
-    // Since this component is inside the theme provider, it will update
-    // as soon as the theme changes.
-    val currentThemeBackground = MaterialTheme.colorScheme.background
+    // Capture the color and center accurately for the current animation
+    val revealColor = remember(targetColor) { targetColor }
+    val revealCenter = remember(clickOffset) { clickOffset ?: Offset.Zero }
 
     LaunchedEffect(themeMode, clickOffset) {
-        if (clickOffset != null && clickOffset != Offset.Zero) {
-            revealCenter = clickOffset
-            revealColor = currentThemeBackground
-            
-            // Calculate a radius that definitely covers any screen
-            val maxRadius = 3000f 
-            
+        if (clickOffset != null) {
+            // Start from 0 for every new click
             radius.snapTo(0f)
-            scope.launch {
-                radius.animateTo(
-                    targetValue = maxRadius,
-                    animationSpec = tween(durationMillis = 1200)
+            radius.animateTo(
+                targetValue = 4000f, // Ensure it covers all screen sizes/orientations
+                animationSpec = tween(
+                    durationMillis = 1400,
+                    easing = FastOutSlowInEasing
                 )
-                onAnimationFinished()
-                radius.snapTo(0f)
-            }
+            )
+            onAnimationFinished()
         }
     }
 
-    if (radius.value > 0f) {
+    if (clickOffset != null) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                color = revealColor,
-                radius = radius.value,
-                center = revealCenter
-            )
+            if (radius.value > 0f) {
+                drawCircle(
+                    color = revealColor,
+                    radius = radius.value,
+                    center = revealCenter
+                )
+            }
         }
     }
 }

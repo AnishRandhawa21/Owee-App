@@ -48,23 +48,49 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun signInWithGoogle(idToken: String) {
+    fun onSignInStarted() {
+        Log.d(TAG, "onSignInStarted() - Setting state to Loading")
+        _sessionState.value = SessionState.Loading
+    }
+
+    fun onSignInFailed(error: Throwable) {
+        Log.e(TAG, "onSignInFailed() - Error: ${error.message}", error)
+        _sessionState.value = SessionState.Unauthenticated
+    }
+
+    fun signInWithGoogle(idToken: String, nonce: String? = null) {
         viewModelScope.launch {
-            Log.d(TAG, "signInWithGoogle() called")
+            val threadName = Thread.currentThread().name
+            Log.d(TAG, "signInWithGoogle() called on thread: $threadName")
+            // Ensure we are in loading state (should already be, but just in case)
             _sessionState.value = SessionState.Loading
-            val result = authRepository.signInWithGoogle(idToken)
-            if (result.isSuccess) {
-                if (authRepository.needsUsernameSetup()) {
-                    Log.d(TAG, "Sign in success: UsernameRequired")
-                    _sessionState.value = SessionState.UsernameRequired
+            
+            try {
+                Log.d(TAG, "Calling authRepository.signInWithGoogle(idToken, nonce)...")
+                val result = authRepository.signInWithGoogle(idToken, nonce)
+                Log.d(TAG, "authRepository.signInWithGoogle result: ${if (result.isSuccess) "Success" else "Failure"}")
+
+                if (result.isSuccess) {
+                    val needsSetup = authRepository.needsUsernameSetup()
+                    Log.d(TAG, "Checking needsUsernameSetup: $needsSetup")
+                    if (needsSetup) {
+                        Log.d(TAG, "Sign in success: Transitioning to UsernameRequired")
+                        _sessionState.value = SessionState.UsernameRequired
+                    } else {
+                        Log.d(TAG, "Sign in success: Transitioning to Authenticated")
+                        _sessionState.value = SessionState.Authenticated
+                        updateFcmToken()
+                    }
                 } else {
-                    Log.d(TAG, "Sign in success: Authenticated")
-                    _sessionState.value = SessionState.Authenticated
-                    updateFcmToken()
+                    val error = result.exceptionOrNull()
+                    Log.e(TAG, "Sign in failed in Repository", error)
+                    _sessionState.value = SessionState.Unauthenticated
                 }
-            } else {
-                Log.d(TAG, "Sign in failed: Unauthenticated")
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error in SessionViewModel.signInWithGoogle", e)
                 _sessionState.value = SessionState.Unauthenticated
+            } finally {
+                Log.d(TAG, "signInWithGoogle() execution completed. Final state: ${_sessionState.value}")
             }
         }
     }

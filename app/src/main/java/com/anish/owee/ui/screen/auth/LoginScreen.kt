@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anish.owee.R
+import android.util.Log
 import com.anish.owee.data.model.SessionState
 import com.anish.owee.ui.theme.*
 import com.anish.owee.utils.GoogleAuthManager
@@ -37,6 +38,7 @@ fun LoginScreen(
     val googleAuthManager = remember { GoogleAuthManager(context) }
     val sessionState by sessionViewModel.sessionState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val TAG = "OWEE_AUTH"
 
     val infiniteTransition = rememberInfiniteTransition(label = "bg_anim")
     val blobProgress by infiniteTransition.animateFloat(
@@ -116,12 +118,27 @@ fun LoginScreen(
                         primaryColor = primaryColor,
                         textPrimaryColor = textPrimaryColor,
                         onClick = {
+                            Log.d(TAG, "Login button clicked. Current State: $sessionState")
+                            if (sessionState is SessionState.Loading) {
+                                Log.w(TAG, "Login already in progress, ignoring click")
+                                return@GoogleSignInButton
+                            }
+                            
+                            sessionViewModel.onSignInStarted()
+                            
                             coroutineScope.launch {
-                                googleAuthManager.signIn().fold(
-                                    onSuccess = { idToken ->
-                                        sessionViewModel.signInWithGoogle(idToken)
+                                Log.d(TAG, "Calling googleAuthManager.signIn()...")
+                                val result = googleAuthManager.signIn()
+                                Log.d(TAG, "googleAuthManager.signIn() result: ${if (result.isSuccess) "Success" else "Failure: " + result.exceptionOrNull()?.message}")
+                                
+                                result.fold(
+                                    onSuccess = { signInResult ->
+                                        Log.d(TAG, "Proceeding to sessionViewModel.signInWithGoogle(idToken, nonce)")
+                                        sessionViewModel.signInWithGoogle(signInResult.idToken, signInResult.rawNonce)
                                     },
                                     onFailure = { error ->
+                                        Log.e(TAG, "Google Sign-In failed in UI", error)
+                                        sessionViewModel.onSignInFailed(error)
                                         snackbarHostState.showSnackbar(
                                             message = "Login failed: ${error.localizedMessage ?: "Unknown error"}",
                                             duration = SnackbarDuration.Long
@@ -159,7 +176,7 @@ private fun GoogleSignInButton(
             .fillMaxWidth()
             .height(60.dp),
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant, // Flat grey background
+        color = MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 0.dp
     ) {
         Box(contentAlignment = Alignment.Center) {

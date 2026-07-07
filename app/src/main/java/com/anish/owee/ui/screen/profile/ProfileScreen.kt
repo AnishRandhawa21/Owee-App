@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.luminance
 import android.content.pm.PackageManager
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -61,6 +61,7 @@ fun ProfileScreen(
     var activeBackground by remember { mutableStateOf(currentThemeBackground) }
     var isAnimating by remember { mutableStateOf(false) }
 
+    // Sync background when not animating (e.g. system theme change)
     LaunchedEffect(currentThemeBackground) {
         if (!isAnimating) {
             activeBackground = currentThemeBackground
@@ -124,6 +125,7 @@ fun ProfileScreen(
     ) {
         ThemeRevealEffect(
             themeMode = themeMode,
+            targetColor = currentThemeBackground,
             clickOffset = revealOffset,
             onAnimationFinished = {
                 activeBackground = currentThemeBackground
@@ -374,18 +376,13 @@ fun PremiumSegmentedControl(
 ) {
     val modes = ThemeMode.entries
     val selectedIndex = modes.indexOf(selectedMode)
-    val isDark = isSystemInDarkTheme()
-    var componentOffset by remember { mutableStateOf(Offset.Zero) }
-
+    
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .onGloballyPositioned {
-                componentOffset = it.positionInRoot()
-            }
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDark) 0.5f else 0.7f))
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp)
     ) {
         val maxWidth = maxWidth
@@ -402,9 +399,8 @@ fun PremiumSegmentedControl(
                 .offset(x = indicatorOffset)
                 .width(itemWidth)
                 .fillMaxHeight()
-                .clip(RoundedCornerShape(11.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(MaterialTheme.colorScheme.primary)
-                .shadow(if (isDark) 0.dp else 4.dp, RoundedCornerShape(11.dp))
         )
 
         Row(modifier = Modifier.fillMaxSize()) {
@@ -427,6 +423,7 @@ fun PremiumSegmentedControl(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
+                            // Pass the center of the clicked button
                             onModeSelected(mode, buttonCenter)
                         },
                     contentAlignment = Alignment.Center

@@ -21,18 +21,25 @@ class AuthRepositoryImpl : AuthRepository {
     private val postgrest = client.postgrest
     private val TAG = "OWEE_AUTH"
 
-    override suspend fun signInWithGoogle(idToken: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun signInWithGoogle(idToken: String, nonce: String?): Result<Unit> = withContext(Dispatchers.IO) {
+        val threadName = Thread.currentThread().name
+        Log.d(TAG, "AuthRepositoryImpl: signInWithGoogle() started on thread: $threadName")
         try {
-            Log.d(TAG, "Signing in with Google ID Token")
+            Log.d(TAG, "Signing in to Supabase with Google ID Token (nonce provided: ${nonce != null})...")
             auth.signInWith(IDToken) {
                 this.idToken = idToken
                 this.provider = Google
+                this.nonce = nonce
             }
-            Log.d(TAG, "Supabase sign in success. Session: ${auth.currentSessionOrNull()}")
+            val session = auth.currentSessionOrNull()
+            Log.d(TAG, "Supabase sign in success. Session exists: ${session != null}")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Supabase sign in failed", e)
+            Log.e(TAG, "Exception type: ${e.javaClass.simpleName}, Message: ${e.message}")
             Result.failure(e)
+        } finally {
+            Log.d(TAG, "AuthRepositoryImpl: signInWithGoogle() finished")
         }
     }
 

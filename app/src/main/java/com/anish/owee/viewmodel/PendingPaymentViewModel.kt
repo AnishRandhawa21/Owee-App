@@ -8,6 +8,8 @@ import com.anish.owee.data.model.PendingPayment
 import com.anish.owee.data.repository.*
 import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.domain.GroupBalanceCalculator
+import com.anish.owee.domain.SettlementPlanner
+import com.anish.owee.domain.SettlementSource
 import com.anish.owee.navigation.Route
 import com.anish.owee.utils.PaymentReminderManager
 import kotlinx.coroutines.async
@@ -82,13 +84,20 @@ class PendingPaymentViewModel(application: Application) : AndroidViewModel(appli
                 if (payment.sourceType == "CUSTOM") {
                     performBulkSettlement(payment, currentUser.id)
                 } else {
-                    settlementRepository.createSettlement(
+                    val balanceSource = SettlementSource(
                         sourceType = payment.sourceType,
                         sourceId = payment.sourceId,
-                        payerId = currentUser.id,
-                        receiverId = payment.recipientId,
-                        amount = payment.amount
+                        amount = -payment.amount,
+                        createdAt = ""
                     )
+                    val plan = SettlementPlanner.plan(
+                        currentUserId = currentUser.id,
+                        targetUserId = payment.recipientId,
+                        cashAmount = payment.amount,
+                        sources = listOf(balanceSource),
+                        sessionType = payment.sourceType
+                    )
+                    settlementRepository.createSettlementSession(plan)
                 }
 
                 // Clear storage and reminders
@@ -111,11 +120,11 @@ class PendingPaymentViewModel(application: Application) : AndroidViewModel(appli
                 val targetUserId = payment.recipientId
                 val groups = groupRepository.getGroupsWithMetadata()
                 
-                val groupSources = groups.map { groupMetadata ->
+                val sourceResults = groups.map { groupMetadata ->
                     async {
                         val groupId = groupMetadata.group.id
                         val expenses = expenseRepository.getGroupExpenses(groupId)
-                        val settlements = settlementRepository.getSettlements("GROUP", groupId)
+                        val allocations = settlementRepository.getAllocations("GROUP", groupId)
                         val allParticipants = expenseRepository.getGroupExpenseParticipants(groupId)
                         val participantsByExpense = allParticipants.groupBy { it.expenseId }
 
@@ -123,50 +132,52 @@ class PendingPaymentViewModel(application: Application) : AndroidViewModel(appli
                             currentUserId = currentUserId,
                             expenses = expenses,
                             participantsByExpense = participantsByExpense,
-                            settlements = settlements
+                            allocations = allocations
                         )
 
                         groupBalances.find { it.userId == targetUserId }?.let { gb ->
-                            if (gb.amount < -0.01) {
-                                DebtInfo("GROUP", groupId, gb.amount)
-                            } else null
+                            SettlementSource(
+                                sourceType = "GROUP",
+                                sourceId = groupId,
+                                amount = gb.amount,
+                                createdAt = groupMetadata.group.createdAt
+                            )
                         }
                     }
-                }.awaitAll().filterNotNull()
+                }.awaitAll().filterNotNull().toMutableList()
 
                 val friendship = friendshipRepository.getFriendships().firstOrNull {
                     it.senderId == targetUserId || it.receiverId == targetUserId
                 }
 
-                val friendSource = if (friendship != null) {
+                if (friendship != null) {
                     val requests = friendRequestRepository.getRequestsForFriend(targetUserId)
-                    val settlements = settlementRepository.getSettlements("FRIEND", friendship.id)
-                    val friendNet = FriendBalanceCalculator.calculate(currentUserId, requests, settlements)
-                    if (friendNet < -0.01) DebtInfo("FRIEND", friendship.id, friendNet) else null
-                } else null
-
-                val allDebts = mutableListOf<DebtInfo>()
-                allDebts.addAll(groupSources)
-                friendSource?.let { allDebts.add(it) }
-
-                var remainingAmount = payment.amount
-                // Simplified sorting: settle largest debts first
-                for (debt in allDebts.sortedBy { it.amount }) { 
-                    if (remainingAmount <= 0.001) break
-                    val debtValue = abs(debt.amount)
-                    val settlementValue = round(min(remainingAmount, debtValue) * 100.0) / 100.0
-                    if (settlementValue > 0) {
-                        settlementRepository.createSettlement(debt.sourceType, debt.sourceId, currentUserId, targetUserId, settlementValue)
-                        remainingAmount -= settlementValue
-                    }
+                    val allocations = settlementRepository.getAllocations("FRIEND", friendship.id)
+                    val friendNet = FriendBalanceCalculator.calculate(currentUserId, requests, allocations)
+                    sourceResults.add(
+                        SettlementSource(
+                            sourceType = "FRIEND",
+                            sourceId = friendship.id,
+                            amount = friendNet,
+                            createdAt = friendship.createdAt
+                        )
+                    )
                 }
+
+                val plan = SettlementPlanner.plan(
+                    currentUserId = currentUserId,
+                    targetUserId = targetUserId,
+                    cashAmount = payment.amount,
+                    sources = sourceResults,
+                    sessionType = "HOME"
+                )
+
+                settlementRepository.createSettlementSession(plan)
             }
         } catch (e: Exception) {
             android.util.Log.e("PendingPayment", "Bulk settlement failed", e)
         }
     }
-
-    private data class DebtInfo(val sourceType: String, val sourceId: String, val amount: Double)
 
     fun cancelPayment() {
         clearPending()

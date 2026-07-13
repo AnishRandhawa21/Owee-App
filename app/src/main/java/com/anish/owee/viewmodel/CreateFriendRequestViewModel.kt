@@ -85,7 +85,7 @@ class CreateFriendRequestViewModel : ViewModel() {
                     }
                     
                     if (friendship != null) {
-                        val settlements = settlementRepository.getSettlements("FRIEND", friendship.id)
+                        val allocations = settlementRepository.getAllocations("FRIEND", friendship.id)
 
                         val totalRequestedByMe = requests.filter { it.creatorId == currentUserId }.sumOf { it.amount }
                         val totalRequestedByFriend = requests.filter { it.creatorId != currentUserId }.sumOf { it.amount }
@@ -93,7 +93,7 @@ class CreateFriendRequestViewModel : ViewModel() {
                         val netBalance = FriendBalanceCalculator.calculate(
                             currentUserId = currentUserId,
                             requests = requests,
-                            settlements = settlements
+                            allocations = allocations
                         )
                         
                         var creditToApplyToMyRequests = 0.0

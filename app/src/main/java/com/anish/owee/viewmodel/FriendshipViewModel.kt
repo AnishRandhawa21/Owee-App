@@ -105,16 +105,18 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
 
                 val currentUserId = friendshipRepository.getCurrentUserId() ?: ""
                 val balances = mutableMapOf<String, Double>()
-                
+
                 friends.forEach { friendship ->
                     val friendId = if (friendship.senderId == currentUserId) friendship.receiverId else friendship.senderId
                     val requests = friendRequestRepository.getRequestsForFriend(friendId)
-                    val settlements = settlementRepository.getSettlements("FRIEND", friendship.id)
+                    
+                    // 1. Fetch Friend-specific allocations
+                    val allocations = settlementRepository.getAllocations("FRIEND", friendship.id)
                     
                     balances[friendship.id] = FriendBalanceCalculator.calculate(
                         currentUserId = currentUserId,
                         requests = requests,
-                        settlements = settlements
+                        allocations = allocations
                     )
                 }
 
@@ -245,12 +247,12 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
                 val friendId = if (friendship.senderId == currentUserId) friendship.receiverId else friendship.senderId
 
                 val requests = friendRequestRepository.getRequestsForFriend(friendId)
-                val settlements = settlementRepository.getSettlements("FRIEND", friendshipId)
+                val allocations = settlementRepository.getAllocations("FRIEND", friendshipId)
 
                 val netBalance = FriendBalanceCalculator.calculate(
                     currentUserId = currentUserId,
                     requests = requests,
-                    settlements = settlements
+                    allocations = allocations
                 )
                 
                 _uiState.value = _uiState.value.copy(

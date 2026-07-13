@@ -92,13 +92,27 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                     it.senderId == friendId || it.receiverId == friendId 
                 }
                 
-                val settlements = if (friendship != null) {
-                    settlementRepository.getSettlements(
+                val allocations = if (friendship != null) {
+                    settlementRepository.getAllocations(
                         sourceType = "FRIEND",
                         sourceId = friendship.id
                     )
                 } else {
                     emptyList()
+                }
+
+                // 2. Map Allocations to Session/Activity items
+                val allocationActivities = allocations.map { allocation ->
+                    FriendActivity(
+                        id = allocation.id,
+                        title = if (allocation.payerId == currentUserId) "Settlement completed" else "Payment received",
+                        note = "Settlement via UPI",
+                        amount = kotlin.math.abs(allocation.amount),
+                        status = "paid",
+                        createdAt = allocation.createdAt,
+                        type = "settlement",
+                        creatorId = allocation.payerId
+                    )
                 }
 
                 // 1. Unified Activity List with Mutual Netting logic
@@ -111,7 +125,7 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                 val netBalance = FriendBalanceCalculator.calculate(
                     currentUserId = currentUserId,
                     requests = requests,
-                    settlements = settlements
+                    allocations = allocations
                 )
                 
                 // Determine how much of the debt/credit has been "Cleared"
@@ -133,6 +147,7 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                 }
 
                 val activities = mutableListOf<FriendActivity>()
+                activities.addAll(allocationActivities)
                 
                 sortedRequests.forEach { request ->
                     val isOwedToMe = request.creatorId == currentUserId
@@ -160,27 +175,11 @@ class FriendRequestViewModel(application: Application) : AndroidViewModel(applic
                         )
                     )
                 }
-                
-                settlements.forEach { settlement ->
-                    activities.add(
-                        FriendActivity(
-                            id = settlement.id,
-                            title = if (settlement.payerId == currentUserId) "Settlement completed" else "Payment received",
-                            note = "Settlement via UPI",
-                            amount = settlement.amount,
-                            status = "paid",
-                            createdAt = settlement.createdAt,
-                            type = "settlement",
-                            creatorId = settlement.payerId
-                        )
-                    )
-                }
 
                 _uiState.value =
                     _uiState.value.copy(
                         isLoading = false,
                         requests = requests.sortedByDescending { it.createdAt },
-                        settlements = settlements.sortedByDescending { it.createdAt },
                         activities = activities.sortedByDescending { it.createdAt },
                         balance = netBalance,
                         requestedByMe = totalRequestedByMe,

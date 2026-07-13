@@ -100,7 +100,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         async {
                             val groupId = groupMetadata.group.id
                             val expenses = expenseRepository.getGroupExpenses(groupId)
-                            val settlements = settlementRepository.getSettlements("GROUP", groupId)
+                            val allocations = settlementRepository.getAllocations("GROUP", groupId)
                             val allParticipants = expenseRepository.getGroupExpenseParticipants(groupId)
                             val participantsByExpense = allParticipants.groupBy { it.expenseId }
 
@@ -108,7 +108,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                                 currentUserId = currentUserId,
                                 expenses = expenses,
                                 participantsByExpense = participantsByExpense,
-                                settlements = settlements
+                                allocations = allocations
                             )
                             
                             groupBalances to groupMetadata
@@ -123,12 +123,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             val friendUser = if (friendship.senderId == currentUserId) friendship.receiver else friendship.sender
                             
                             val requests = friendRequestRepository.getRequestsForFriend(friendId)
-                            val friendSettlements = settlementRepository.getSettlements("FRIEND", friendship.id)
+                            val allocations = settlementRepository.getAllocations("FRIEND", friendship.id)
 
                             val friendNet = FriendBalanceCalculator.calculate(
                                 currentUserId = currentUserId,
                                 requests = requests,
-                                settlements = friendSettlements
+                                allocations = allocations
                             )
                             
                             Triple(friendId, friendUser, friendNet) to friendship

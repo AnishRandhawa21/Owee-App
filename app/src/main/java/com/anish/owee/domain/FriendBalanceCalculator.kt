@@ -1,38 +1,38 @@
 package com.anish.owee.domain
 
 import com.anish.owee.data.model.FriendRequest
-import com.anish.owee.data.model.Settlement
+import com.anish.owee.data.model.SettlementAllocation
 
 object FriendBalanceCalculator {
 
     fun calculate(
         currentUserId: String,
         requests: List<FriendRequest>,
-        settlements: List<Settlement>
+        allocations: List<SettlementAllocation>
     ): Double {
-        var totalRequestedByMe = 0.0
-        var totalRequestedByFriend = 0.0
+        var netFromRequests = 0.0
         
         requests.forEach {
             if (it.creatorId == currentUserId) {
-                totalRequestedByMe += it.amount
+                netFromRequests += it.amount
             } else {
-                totalRequestedByFriend += it.amount
+                netFromRequests -= it.amount
             }
         }
 
-        var totalPaidByMe = 0.0
-        var totalReceivedByMe = 0.0
-        
-        settlements.forEach {
-            if (it.payerId == currentUserId) {
-                totalPaidByMe += it.amount
-            } else {
-                totalReceivedByMe += it.amount
+        // Apply Allocations
+        var totalAllocated = 0.0
+        allocations.forEach { allocation ->
+            if (allocation.receiverId == currentUserId) {
+                // I received money, my credit decreases or my debt increases
+                totalAllocated += allocation.amount
+            } else if (allocation.payerId == currentUserId) {
+                // I paid money, my debt decreases or my credit increases
+                totalAllocated -= allocation.amount
             }
         }
 
-        val net = (totalRequestedByMe - totalRequestedByFriend) + (totalPaidByMe - totalReceivedByMe)
+        val net = netFromRequests - totalAllocated
         return kotlin.math.round(net * 100.0) / 100.0
     }
 }

@@ -17,6 +17,8 @@ import com.anish.owee.data.model.PendingPayment
 import com.anish.owee.utils.PaymentReminderManager
 import com.anish.owee.utils.UpiPaymentManager
 import com.anish.owee.data.local.PreferenceManager
+import com.anish.owee.domain.SettlementPlanner
+import com.anish.owee.domain.SettlementSource
 import com.anish.owee.viewmodel.state.SettlementUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -91,17 +93,31 @@ class SettlementViewModel(application: Application) : AndroidViewModel(applicati
             val targetUser = _uiState.value.user ?: return@launch
             val sourceType = _uiState.value.sourceType
             val sourceId = _uiState.value.sourceId
+            val amount = _uiState.value.amount
 
-            val result = settlementRepository.createSettlement(
+            // Use the SettlementPlanner even for single-context settlements
+            // We assume the amount passed in represents the debt direction 
+            // from the caller (e.g. if we are paying, it's a debt).
+            // To ensure correct payer detection, we wrap it in a source.
+            val balanceSource = SettlementSource(
                 sourceType = sourceType,
                 sourceId = sourceId,
-                payerId = currentUser.id,
-                receiverId = targetUser.id,
-                amount = _uiState.value.amount
+                amount = -amount, // Assuming "Pay" flow where I owe
+                createdAt = "" // Not needed for single source
             )
 
+            val plan = SettlementPlanner.plan(
+                currentUserId = currentUser.id,
+                targetUserId = targetUser.id,
+                cashAmount = amount,
+                sources = listOf(balanceSource),
+                sessionType = sourceType
+            )
+
+            val result = settlementRepository.createSettlementSession(plan)
+
             result.onSuccess {
-                android.util.Log.d("OWEE_SETTLEMENT", "Settlement created")
+                android.util.Log.d("OWEE_SETTLEMENT", "Settlement created via Planner")
                 
                 // Clear pending payment
                 PreferenceManager(getApplication()).clearPendingPayment()
@@ -133,7 +149,7 @@ class SettlementViewModel(application: Application) : AndroidViewModel(applicati
                     try {
                         val friendId = targetUser.id
                         val requests = friendRequestRepository.getRequestsForFriend(friendId)
-                        val settlements = settlementRepository.getSettlements("FRIEND", sourceId)
+                        val allocations = settlementRepository.getAllocations("FRIEND", sourceId)
                         val currentUserId = currentUser.id
                         
                         val totalRequestedByMe = requests.filter { it.creatorId == currentUserId }.sumOf { it.amount }
@@ -142,7 +158,7 @@ class SettlementViewModel(application: Application) : AndroidViewModel(applicati
                         val netBalance = FriendBalanceCalculator.calculate(
                             currentUserId = currentUserId,
                             requests = requests,
-                            settlements = settlements
+                            allocations = allocations
                         )
                         
                         var creditToApplyToMyRequests = 0.0

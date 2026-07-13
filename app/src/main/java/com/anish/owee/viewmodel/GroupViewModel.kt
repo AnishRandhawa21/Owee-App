@@ -94,7 +94,7 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
                     val isSettled = if (expenses.isEmpty()) {
                         true
                     } else {
-                        val settlements = settlementRepository.getSettlements("GROUP", groupId)
+                        val allocations = settlementRepository.getAllocations("GROUP", groupId)
                         val allParticipants = expenseRepository.getAllExpenseParticipants(expenses.map { it.id })
                         val participantsByExpense = allParticipants.groupBy { it.expenseId }
 
@@ -102,7 +102,7 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
                             currentUserId = currentUserId,
                             expenses = expenses,
                             participantsByExpense = participantsByExpense,
-                            settlements = settlements
+                            allocations = allocations
                         )
                         balances.isEmpty()
                     }
@@ -156,7 +156,7 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
                 val currentUserId = groupRepository.getCurrentUserId() ?: return@launch
 
                 val expenses = expenseRepository.getGroupExpenses(groupId)
-                val settlements = settlementRepository.getSettlements("GROUP", groupId)
+                val allocations = settlementRepository.getAllocations("GROUP", groupId)
                 val allParticipants = expenseRepository.getAllExpenseParticipants(expenses.map { it.id })
                 val participantsByExpense = allParticipants.groupBy { it.expenseId }
 
@@ -164,7 +164,7 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
                     currentUserId = currentUserId,
                     expenses = expenses,
                     participantsByExpense = participantsByExpense,
-                    settlements = settlements
+                    allocations = allocations
                 )
 
                 _uiState.value = _uiState.value.copy(

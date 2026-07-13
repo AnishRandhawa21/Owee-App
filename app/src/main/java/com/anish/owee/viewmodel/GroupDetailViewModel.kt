@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anish.owee.data.local.PreferenceManager
+import com.anish.owee.data.model.Settlement
 import com.anish.owee.data.repository.ExpenseRepository
 import com.anish.owee.data.repository.ExpenseRepositoryImpl
 import com.anish.owee.data.repository.GroupRepository
@@ -87,21 +88,17 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
 
             try {
                 // Fetch group first to ensure it exists
-                val group = groupRepository.getGroup(groupId) 
+                val group = groupRepository.getGroup(groupId)
                     ?: throw Exception("Group not found")
-// ... rest of the fetch logic ...
 
-                val members =
-                    groupRepository.getGroupMembers(groupId)
+                val members = groupRepository.getGroupMembers(groupId)
+                val expenses = expenseRepository.getGroupExpenses(groupId)
 
-                val expenses =
-                    expenseRepository.getGroupExpenses(groupId)
-
-                val settlements =
-                    settlementRepository.getSettlements(
-                        sourceType = "GROUP",
-                        sourceId = groupId
-                    )
+                // 1. Fetch Group-specific allocations
+                val allocations = settlementRepository.getAllocations(
+                    sourceType = "GROUP",
+                    sourceId = groupId
+                )
 
                 val allParticipants =
                     expenseRepository.getGroupExpenseParticipants(groupId)
@@ -111,14 +108,29 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
                         it.expenseId
                     }
 
+                // 2. Use allocations instead of settlements
                 val balances =
                     GroupBalanceCalculator
                         .calculateBalances(
                             currentUserId = currentUserId,
                             expenses = expenses,
                             participantsByExpense = participantsByExpense,
-                            settlements = settlements
+                            allocations = allocations
                         )
+
+                // 3. Map Allocations to Settlement for UI Compatibility
+                val settlementDisplayList = allocations.map { allocation ->
+                    Settlement(
+                        id = allocation.id,
+                        sourceType = allocation.sourceType,
+                        sourceId = allocation.sourceId,
+                        payerId = allocation.payerId,
+                        receiverId = allocation.receiverId,
+                        amount = kotlin.math.abs(allocation.amount),
+                        status = "completed",
+                        createdAt = allocation.createdAt
+                    )
+                }
 
                 _uiState.value =
                     _uiState.value.copy(
@@ -126,7 +138,7 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
                         group = group,
                         members = members,
                         expenses = expenses,
-                        settlements = settlements,
+                        settlements = settlementDisplayList,
                         balances = balances,
                         participantsByExpense =
                             participantsByExpense

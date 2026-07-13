@@ -3,7 +3,7 @@ package com.anish.owee.domain
 import com.anish.owee.data.model.Expense
 import com.anish.owee.data.model.ExpenseParticipant
 import com.anish.owee.data.model.GroupMemberBalance
-import com.anish.owee.data.model.Settlement
+import com.anish.owee.data.model.SettlementAllocation
 
 object GroupBalanceCalculator {
 
@@ -11,85 +11,46 @@ object GroupBalanceCalculator {
         currentUserId: String,
         expenses: List<Expense>,
         participantsByExpense: Map<String, List<ExpenseParticipant>>,
-        settlements: List<Settlement>
+        allocations: List<SettlementAllocation>
     ): List<GroupMemberBalance> {
 
-        val memberBalances =
-            mutableMapOf<String, Double>()
+        val memberBalances = mutableMapOf<String, Double>()
 
-        // EXPENSES
-
+        // 1. Process Expenses
         expenses.forEach { expense ->
-
-            val participants =
-                participantsByExpense[expense.id]
-                    ?: emptyList()
+            val participants = participantsByExpense[expense.id] ?: emptyList()
 
             if (expense.payerId == currentUserId) {
-
                 participants.forEach { participant ->
-
                     if (participant.userId != currentUserId) {
-
                         memberBalances[participant.userId] =
-                            memberBalances.getOrDefault(
-                                participant.userId,
-                                0.0
-                            ) + participant.shareAmount
+                            memberBalances.getOrDefault(participant.userId, 0.0) + participant.shareAmount
                     }
                 }
             } else {
-
-                val currentUserShare =
-                    participants.firstOrNull {
-                        it.userId == currentUserId
-                    }
-
+                val currentUserShare = participants.firstOrNull { it.userId == currentUserId }
                 if (currentUserShare != null) {
-
                     memberBalances[expense.payerId] =
-                        memberBalances.getOrDefault(
-                            expense.payerId,
-                            0.0
-                        ) - currentUserShare.shareAmount
+                        memberBalances.getOrDefault(expense.payerId, 0.0) - currentUserShare.shareAmount
                 }
             }
         }
 
-        // SETTLEMENTS
-
-        settlements.forEach { settlement ->
-
-            when {
-
-                settlement.receiverId == currentUserId -> {
-
-                    memberBalances[settlement.payerId] =
-                        memberBalances.getOrDefault(
-                            settlement.payerId,
-                            0.0
-                        ) - settlement.amount
-                }
-
-                settlement.payerId == currentUserId -> {
-
-                    memberBalances[settlement.receiverId] =
-                        memberBalances.getOrDefault(
-                            settlement.receiverId,
-                            0.0
-                        ) + settlement.amount
+        // 2. Process Allocations
+        allocations.forEach { allocation ->
+            val otherUserId = if (allocation.payerId == currentUserId) allocation.receiverId else allocation.payerId
+            if (otherUserId != null) {
+                if (allocation.receiverId == currentUserId) {
+                    memberBalances[otherUserId] = memberBalances.getOrDefault(otherUserId, 0.0) - allocation.amount
+                } else if (allocation.payerId == currentUserId) {
+                    memberBalances[otherUserId] = memberBalances.getOrDefault(otherUserId, 0.0) + allocation.amount
                 }
             }
         }
 
-        return memberBalances
-            .filterValues { kotlin.math.abs(it) > 0.01 }
+        return memberBalances.filterValues { kotlin.math.abs(it) > 0.01 }
             .map { (userId, amount) ->
-
-                GroupMemberBalance(
-                    userId = userId,
-                    amount = kotlin.math.round(amount * 100.0) / 100.0
-                )
+                GroupMemberBalance(userId, kotlin.math.round(amount * 100.0) / 100.0)
             }
     }
 }

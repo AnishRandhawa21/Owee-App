@@ -1,8 +1,8 @@
 package com.anish.owee.data.repository
 
-import com.anish.owee.data.model.CreateSettlementRequest
-import com.anish.owee.data.model.Settlement
+import com.anish.owee.data.model.*
 import com.anish.owee.data.remote.SupabaseProvider
+import com.anish.owee.domain.SettlementPlan
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.realtime.PostgresAction
@@ -24,88 +24,83 @@ class SettlementRepositoryImpl : SettlementRepository {
 
     private val postgrest = client.postgrest
 
-    override suspend fun createSettlement(
-        sourceType: String,
-        sourceId: String?,
-        payerId: String,
-        receiverId: String,
-        amount: Double
+    override suspend fun createSettlementSession(
+        plan: SettlementPlan
     ): Result<Unit> = withContext(Dispatchers.IO) {
-
         try {
+            // 1. Insert Session
+            val session = postgrest["settlement_sessions"]
+                .insert(plan.session) {
+                    select()
+                }
+                .decodeSingle<SettlementSession>()
 
-            postgrest["settlements"]
-                .insert(
-                    CreateSettlementRequest(
-                        sourceType = sourceType,
-                        sourceId = sourceId,
-                        payerId = payerId,
-                        receiverId = receiverId,
-                        amount = amount
-                    )
+            // 2. Map Allocations to Session ID and use explicit directional IDs from plan
+            val allocations = plan.allocations.map {
+                CreateSettlementAllocationRequest(
+                    sessionId = session.id,
+                    sourceType = it.sourceType,
+                    sourceId = it.sourceId,
+                    payerId = it.payerId,
+                    receiverId = it.receiverId,
+                    amount = it.amount
                 )
+            }
+
+            // 3. Insert Allocations
+            if (allocations.isNotEmpty()) {
+                postgrest["settlement_allocations"].insert(allocations)
+            }
 
             Result.success(Unit)
-
         } catch (e: Exception) {
-
-            android.util.Log.e(
-                "OWEE_SETTLEMENT",
-                "Create settlement failed",
-                e
-            )
-
+            android.util.Log.e("OWEE_SETTLEMENT", "Create session failed", e)
             Result.failure(e)
         }
     }
 
-    override suspend fun getSettlements(
+    override suspend fun getAllocations(
         sourceType: String,
-        sourceId: String?
-    ): List<Settlement> =
-        withContext(Dispatchers.IO) {
-
-            try {
-
-                postgrest["settlements"]
-                    .select {
-                        filter {
-
-                            eq(
-                                "source_type",
-                                sourceType
-                            )
-
-                            if (sourceId != null) {
-
-                                eq(
-                                    "source_id",
-                                    sourceId
-                                )
-                            }
-                        }
-
-                        order(
-                            "created_at",
-                            Order.DESCENDING
-                        )
+        sourceId: String
+    ): List<SettlementAllocation> = withContext(Dispatchers.IO) {
+        try {
+            postgrest["settlement_allocations"]
+                .select {
+                    filter {
+                        eq("source_type", sourceType)
+                        eq("source_id", sourceId)
                     }
-                    .decodeList<Settlement>()
-
-            } catch (e: Exception) {
-
-                android.util.Log.e(
-                    "OWEE_SETTLEMENT",
-                    "Load settlements failed",
-                    e
-                )
-
-                emptyList()
-            }
+                }
+                .decodeList<SettlementAllocation>()
+        } catch (e: Exception) {
+            android.util.Log.e("OWEE_SETTLEMENT", "Load allocations failed", e)
+            emptyList()
         }
+    }
+
+    override suspend fun getSessions(
+        userId: String
+    ): List<SettlementSession> = withContext(Dispatchers.IO) {
+        try {
+            postgrest["settlement_sessions"]
+                .select {
+                    filter {
+                        or {
+                            eq("payer_id", userId)
+                            eq("receiver_id", userId)
+                        }
+                    }
+                    order("created_at", Order.DESCENDING)
+                }
+                .decodeList<SettlementSession>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     override suspend fun deleteSettlement(settlementId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            // Note: We are deleting from legacy settlements table for compatibility
             postgrest["settlements"]
                 .delete {
                     filter {
@@ -124,18 +119,22 @@ class SettlementRepositoryImpl : SettlementRepository {
         val channel = client.realtime.channel(channelId)
 
         try {
-            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to settlements")
+            android.util.Log.d("OWEE_REALTIME", "Attempting to subscribe to settlement tables")
 
-            val postgresFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
-                table = "settlements"
+            val sessionsFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "settlement_sessions"
+            }
+            
+            val allocationsFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "settlement_allocations"
             }
 
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
             
-            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to settlements")
+            android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to settlement tables")
 
-            postgresFlow.collect {
+            kotlinx.coroutines.flow.merge(sessionsFlow, allocationsFlow).collect {
                 android.util.Log.d("OWEE_REALTIME", "Change detected in settlements")
                 emit(Unit)
             }

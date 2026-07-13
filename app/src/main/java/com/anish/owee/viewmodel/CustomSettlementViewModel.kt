@@ -9,6 +9,8 @@ import com.anish.owee.data.model.User
 import com.anish.owee.data.repository.*
 import com.anish.owee.domain.FriendBalanceCalculator
 import com.anish.owee.domain.GroupBalanceCalculator
+import com.anish.owee.domain.SettlementPlanner
+import com.anish.owee.domain.SettlementSource
 import com.anish.owee.utils.PaymentReminderManager
 import com.anish.owee.utils.UpiApp
 import com.anish.owee.utils.UpiPaymentManager
@@ -87,7 +89,7 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                         async {
                             val groupId = groupMetadata.group.id
                             val expenses = expenseRepository.getGroupExpenses(groupId)
-                            val settlements = settlementRepository.getSettlements("GROUP", groupId)
+                            val allocations = settlementRepository.getAllocations("GROUP", groupId)
                             val allParticipants = expenseRepository.getGroupExpenseParticipants(groupId)
                             val participantsByExpense = allParticipants.groupBy { it.expenseId }
 
@@ -95,7 +97,7 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                                 currentUserId = currentUserId,
                                 expenses = expenses,
                                 participantsByExpense = participantsByExpense,
-                                settlements = settlements
+                                allocations = allocations
                             )
 
                             groupBalances.find { it.userId == targetUserId }?.let { gb ->
@@ -118,12 +120,12 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
 
                         if (friendship != null) {
                             val requests = friendRequestRepository.getRequestsForFriend(targetUserId)
-                            val settlements = settlementRepository.getSettlements("FRIEND", friendship.id)
+                            val allocations = settlementRepository.getAllocations("FRIEND", friendship.id)
 
                             val friendNet = FriendBalanceCalculator.calculate(
                                 currentUserId = currentUserId,
                                 requests = requests,
-                                settlements = settlements
+                                allocations = allocations
                             )
 
                             if (kotlin.math.abs(friendNet) > 0.01) {
@@ -242,30 +244,27 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                var remainingAmount = amountToPay
-                
-                // Only consider sources where I OWE money
-                val debtsToSettle = _uiState.value.sources.filter { it.amount < -0.01 }
-                
-                for (debt in debtsToSettle) {
-                    if (remainingAmount <= 0.001) break
-                    
-                    val debtValue = kotlin.math.abs(debt.amount)
-                    val rawSettlementValue = kotlin.math.min(remainingAmount, debtValue)
-                    val settlementValue = kotlin.math.round(rawSettlementValue * 100.0) / 100.0
-                    
-                    if (settlementValue > 0) {
-                        settlementRepository.createSettlement(
-                            sourceType = debt.sourceType,
-                            sourceId = debt.sourceId,
-                            payerId = currentUserId,
-                            receiverId = targetUser.id,
-                            amount = settlementValue
-                        )
-                    }
-                    
-                    remainingAmount -= settlementValue
+                // Map UI sources to Domain sources
+                val domainSources = _uiState.value.sources.map {
+                    SettlementSource(
+                        sourceType = it.sourceType,
+                        sourceId = it.sourceId,
+                        amount = it.amount,
+                        createdAt = it.createdAt
+                    )
                 }
+
+                // Generate Instructions using the new SettlementPlanner
+                val plan = SettlementPlanner.plan(
+                    currentUserId = currentUserId,
+                    targetUserId = targetUser.id,
+                    cashAmount = amountToPay,
+                    sources = domainSources,
+                    sessionType = "HOME"
+                )
+
+                // Execute Settlement Session
+                settlementRepository.createSettlementSession(plan)
 
                 _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
                 

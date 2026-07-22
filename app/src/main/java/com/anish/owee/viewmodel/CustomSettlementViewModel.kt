@@ -254,13 +254,17 @@ class CustomSettlementViewModel(application: Application) : AndroidViewModel(app
                     )
                 }
 
+                // Find friendship ID for fallback
+                val friendshipId = domainSources.find { it.sourceType == "FRIEND" }?.sourceId
+
                 // Generate Instructions using the new SettlementPlanner
                 val plan = SettlementPlanner.plan(
                     currentUserId = currentUserId,
                     targetUserId = targetUser.id,
                     cashAmount = amountToPay,
                     sources = domainSources,
-                    sessionType = "HOME"
+                    sessionType = "HOME",
+                    fallbackFriendshipId = friendshipId
                 )
 
                 // Execute Settlement Session

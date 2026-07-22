@@ -111,7 +111,8 @@ class SettlementViewModel(application: Application) : AndroidViewModel(applicati
                 targetUserId = targetUser.id,
                 cashAmount = amount,
                 sources = listOf(balanceSource),
-                sessionType = sourceType
+                sessionType = sourceType,
+                fallbackFriendshipId = if (sourceType == "FRIEND") sourceId else null
             )
 
             val result = settlementRepository.createSettlementSession(plan)

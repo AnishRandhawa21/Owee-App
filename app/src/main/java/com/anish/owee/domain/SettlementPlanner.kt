@@ -25,12 +25,25 @@ object SettlementPlanner {
      *                Negative amount means currentUserId owes targetUserId.
      * @param sessionType The context of the settlement ('HOME', 'GROUP', or 'FRIEND').
      */
+    /**
+     * Plans a settlement session and its corresponding directional allocations.
+     * 
+     * @param currentUserId The ID of the user performing the settlement.
+     * @param targetUserId The ID of the other user in the relationship.
+     * @param cashAmount The actual cash/UPI amount being moved.
+     * @param sources All relevant balance sources between the two users.
+     *                Positive amount means targetUserId owes currentUserId.
+     *                Negative amount means currentUserId owes targetUserId.
+     * @param sessionType The context of the settlement ('HOME', 'GROUP', or 'FRIEND').
+     * @param fallbackFriendshipId The ID of the friendship relationship (required for FRIEND settlements).
+     */
     fun plan(
         currentUserId: String,
         targetUserId: String,
         cashAmount: Double,
         sources: List<SettlementSource>,
-        sessionType: String
+        sessionType: String,
+        fallbackFriendshipId: String? = null
     ): SettlementPlan {
         
         // 1. Determine Direction of the real cash movement based on totalNet
@@ -98,11 +111,17 @@ object SettlementPlanner {
         
         // 4. Step C: Overpayment (Remainder)
         if (remainingPool > 0.001) {
-            val primarySource = sources.find { it.sourceType == "FRIEND" } ?: sources.firstOrNull()
+            // Priority: FRIEND source > Any Source > Fallback ID
+            val friendSource = sources.find { it.sourceType == "FRIEND" }
+            val primarySource = friendSource ?: sources.firstOrNull()
+            
+            val finalSourceType = primarySource?.sourceType ?: "FRIEND"
+            val finalSourceId = primarySource?.sourceId ?: fallbackFriendshipId ?: targetUserId
+
             allocations.add(
                 CreateSettlementAllocationPlan(
-                    sourceType = primarySource?.sourceType ?: "FRIEND",
-                    sourceId = primarySource?.sourceId ?: targetUserId,
+                    sourceType = finalSourceType,
+                    sourceId = finalSourceId,
                     payerId = realPayerId,
                     receiverId = realReceiverId,
                     amount = round(remainingPool * 100.0) / 100.0

@@ -17,7 +17,6 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.security.MessageDigest
 import java.util.UUID
 
@@ -53,50 +52,34 @@ class GoogleAuthManager(private val context: Context) {
             val rawNonce = UUID.randomUUID().toString()
             val hashedNonce = hashNonce(rawNonce)
 
-            val response: GetCredentialResponse? = withContext(Dispatchers.Main) {
+            val response: GetCredentialResponse = withContext(Dispatchers.Main) {
                 delay(300)
 
-                // Strategy: Try Bottom Sheet first, Fallback to Window if it hangs (Redmi fix)
-                Log.d(TAG, "Attempt 1: Requesting Bottom Sheet UI (GetGoogleIdOption)")
+                // Strategy: Include both modern Bottom Sheet and Legacy dialog in ONE request.
+                // This is the stable, recommended way to handle fallback without double-popups.
+                Log.d(TAG, "Requesting Google Sign-In UI (Combined options)")
+                
                 val googleIdOption = GetGoogleIdOption.Builder()
                     .setFilterByAuthorizedAccounts(false)
                     .setServerClientId(BuildConfig.WEB_CLIENT_ID)
                     .setAutoSelectEnabled(false)
                     .setNonce(hashedNonce)
                     .build()
-                
-                val request1 = GetCredentialRequest.Builder().addCredentialOption(googleIdOption).build()
-                
-                // Short timeout for the bottom sheet attempt
-                val res = withTimeoutOrNull(8000) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        executeWithPrepare(activity, request1)
-                    } else {
-                        credentialManager.getCredential(activity, request1)
-                    }
-                }
 
-                if (res == null) {
-                    Log.w(TAG, "Bottom Sheet attempt timed out/failed. Falling back to Window UI (GetSignInWithGoogleOption)")
-                    val signInOption = GetSignInWithGoogleOption.Builder(BuildConfig.WEB_CLIENT_ID)
-                        .setNonce(hashedNonce)
-                        .build()
-                    val request2 = GetCredentialRequest.Builder().addCredentialOption(signInOption).build()
-                    
-                    withTimeoutOrNull(20000) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                            executeWithPrepare(activity, request2)
-                        } else {
-                            credentialManager.getCredential(activity, request2)
-                        }
-                    }
+                val signInOption = GetSignInWithGoogleOption.Builder(BuildConfig.WEB_CLIENT_ID)
+                    .setNonce(hashedNonce)
+                    .build()
+                
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .addCredentialOption(signInOption)
+                    .build()
+                
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    executeWithPrepare(activity, request)
                 } else {
-                    res
+                    credentialManager.getCredential(activity, request)
                 }
-            }
-
-            if (response == null) {
-                return Result.failure(Exception("Google Sign-In is unavailable. Please check Play Services."))
             }
 
             val credential = response.credential

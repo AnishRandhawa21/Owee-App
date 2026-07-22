@@ -1,0 +1,5 @@
+- `[x]` Update `SettlementPlanner.kt` to handle consistent `source_id` mapping.
+- `[x]` Update `SettlementRepositoryImpl.kt` to remove legacy table references and ensure proper mapping.
+- `[x]` Update `PendingPaymentViewModel.kt` to pass the correct `friendship_id` to the planner.
+- `[x]` Update `SettlementViewModel.kt` to ensure `sourceId` consistency.
+- `[x]` Verify `NotificationRepositoryImpl.kt` for any potential `jsonb` issues (Fixed via `OweeNotification.kt`).

@@ -95,7 +95,8 @@ class PendingPaymentViewModel(application: Application) : AndroidViewModel(appli
                         targetUserId = payment.recipientId,
                         cashAmount = payment.amount,
                         sources = listOf(balanceSource),
-                        sessionType = payment.sourceType
+                        sessionType = payment.sourceType,
+                        fallbackFriendshipId = if (payment.sourceType == "FRIEND") payment.sourceId else null
                     )
                     settlementRepository.createSettlementSession(plan)
                 }
@@ -169,7 +170,8 @@ class PendingPaymentViewModel(application: Application) : AndroidViewModel(appli
                     targetUserId = targetUserId,
                     cashAmount = payment.amount,
                     sources = sourceResults,
-                    sessionType = "HOME"
+                    sessionType = "HOME",
+                    fallbackFriendshipId = friendship?.id
                 )
 
                 settlementRepository.createSettlementSession(plan)

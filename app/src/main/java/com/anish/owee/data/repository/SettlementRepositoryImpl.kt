@@ -100,7 +100,15 @@ class SettlementRepositoryImpl : SettlementRepository {
 
     override suspend fun deleteSettlement(settlementId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            // Note: We are deleting from legacy settlements table for compatibility
+            // Check in settlement_sessions first (modern structure)
+            val sessionDelete = postgrest["settlement_sessions"]
+                .delete {
+                    filter {
+                        eq("id", settlementId)
+                    }
+                }
+            
+            // If nothing deleted or for compatibility, try the legacy table
             postgrest["settlements"]
                 .delete {
                     filter {

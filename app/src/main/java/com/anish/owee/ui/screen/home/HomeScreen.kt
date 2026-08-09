@@ -43,14 +43,29 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+import androidx.activity.ComponentActivity
+import com.anish.owee.utils.ConnectivityObserver
+import com.anish.owee.utils.NetworkConnectivityObserver
+import androidx.compose.ui.platform.LocalContext
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onUserClick: (String) -> Unit = {},
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    sessionViewModel: com.anish.owee.viewmodel.SessionViewModel = viewModel(
+        viewModelStoreOwner = LocalContext.current as ComponentActivity
+    )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isOfflineLoading by sessionViewModel.isOfflineLoading.collectAsState()
+    
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+    
+    val connectivityObserver = remember { NetworkConnectivityObserver(context) }
+    val status by connectivityObserver.observe().collectAsState(initial = ConnectivityObserver.Status.Available)
+    val isOffline = status != ConnectivityObserver.Status.Available
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -72,14 +87,14 @@ fun HomeScreen(
     ) {
         // Animated Status Bar Loading
         AnimatedVisibility(
-            visible = uiState.isLoading,
+            visible = uiState.isLoading || isOfflineLoading,
             enter = fadeIn(tween(400)) + expandVertically(tween(400)),
             exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
             modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
         ) {
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth().height(3.dp),
-                color = MaterialTheme.colorScheme.primary,
+                color = if (isOffline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 trackColor = Color.Transparent
             )
         }
@@ -102,8 +117,13 @@ fun HomeScreen(
             )
 
             PullToRefreshBox(
-                isRefreshing = uiState.isLoading,
-                onRefresh = { viewModel.loadHomeData() },
+                isRefreshing = uiState.isLoading || isOfflineLoading,
+                onRefresh = { 
+                    if (isOffline) {
+                        sessionViewModel.triggerOfflineRefresh()
+                    }
+                    viewModel.loadHomeData() 
+                },
                 modifier = Modifier.fillMaxSize(),
                 indicator = { }
             ) {
@@ -137,7 +157,14 @@ fun HomeScreen(
                                     items(uiState.userBalances) { userBalance ->
                                         PeopleSummaryStory(
                                             userBalance = userBalance,
-                                            onClick = { onUserClick(userBalance.user.id) }
+                                            onClick = { 
+                                                if (isOffline) {
+                                                    android.widget.Toast.makeText(context, "Cannot settle while offline", android.widget.Toast.LENGTH_SHORT).show()
+                                                    sessionViewModel.triggerOfflineRefresh()
+                                                } else {
+                                                    onUserClick(userBalance.user.id)
+                                                }
+                                            }
                                         )
                                     }
                                 }

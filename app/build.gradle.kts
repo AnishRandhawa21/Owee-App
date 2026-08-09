@@ -23,8 +23,8 @@ android {
         applicationId = "com.anish.owee"
         minSdk = 26
         targetSdk = 37
-        versionCode = 9
-        versionName = "1.0.6"
+        versionCode = 11
+        versionName = "1.1.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(

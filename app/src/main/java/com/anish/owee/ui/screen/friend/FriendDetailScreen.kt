@@ -46,6 +46,9 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
 
+import com.anish.owee.utils.ConnectivityObserver
+import com.anish.owee.utils.NetworkConnectivityObserver
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun FriendDetailScreen(
@@ -61,6 +64,11 @@ fun FriendDetailScreen(
 ) {
     val uiState by friendshipViewModel.uiState.collectAsStateWithLifecycle()
     val requestUiState by friendRequestViewModel.uiState.collectAsStateWithLifecycle()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val connectivityObserver = remember { NetworkConnectivityObserver(context) }
+    val status by connectivityObserver.observe().collectAsState(initial = ConnectivityObserver.Status.Available)
+    val isOffline = status != ConnectivityObserver.Status.Available
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -280,42 +288,66 @@ fun FriendDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     Button(
-                                        onClick = { onRequestMoneyClick(friend.id, friend.displayName) },
+                                        onClick = { 
+                                            if (isOffline) {
+                                                android.widget.Toast.makeText(context, "Cannot request money while offline", android.widget.Toast.LENGTH_SHORT).show()
+                                                return@Button
+                                            }
+                                            onRequestMoneyClick(friend.id, friend.displayName) 
+                                        },
                                         modifier = Modifier.weight(1f).height(52.dp),
                                         shape = MaterialTheme.shapes.medium,
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (showSettleButton) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
-                                            contentColor = if (showSettleButton) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
+                                            containerColor = if (isOffline) MaterialTheme.colorScheme.error 
+                                                             else if (showSettleButton) MaterialTheme.colorScheme.surfaceVariant 
+                                                             else MaterialTheme.colorScheme.primary,
+                                            contentColor = if (isOffline) MaterialTheme.colorScheme.onError
+                                                           else if (showSettleButton) MaterialTheme.colorScheme.onSurfaceVariant 
+                                                           else MaterialTheme.colorScheme.onPrimary
                                         ),
                                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Add,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("Request", fontWeight = FontWeight.Bold)
-                                    }
-
-                                    if (showSettleButton) {
-                                        Button(
-                                            onClick = { showSettlementSheet = true },
-                                            modifier = Modifier.weight(1f).height(52.dp),
-                                            shape = MaterialTheme.shapes.medium,
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.error,
-                                                contentColor = MaterialTheme.colorScheme.onError
-                                            ),
-                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                                        ) {
+                                        if (isOffline) {
+                                            Text("Offline", fontWeight = FontWeight.Bold)
+                                        } else {
                                             Icon(
-                                                imageVector = Icons.Rounded.CheckCircle,
+                                                imageVector = Icons.Rounded.Add,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(18.dp)
                                             )
                                             Spacer(Modifier.width(8.dp))
-                                            Text("Settle Up", fontWeight = FontWeight.Bold)
+                                            Text("Request", fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+
+                                    if (showSettleButton) {
+                                        Button(
+                                            onClick = { 
+                                                if (isOffline) {
+                                                    android.widget.Toast.makeText(context, "Cannot settle while offline", android.widget.Toast.LENGTH_SHORT).show()
+                                                    return@Button
+                                                }
+                                                showSettlementSheet = true 
+                                            },
+                                            modifier = Modifier.weight(1f).height(52.dp),
+                                            shape = MaterialTheme.shapes.medium,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isOffline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.error,
+                                                contentColor = MaterialTheme.colorScheme.onError
+                                            ),
+                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                                        ) {
+                                            if (isOffline) {
+                                                Text("Offline", fontWeight = FontWeight.Bold)
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.CheckCircle,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(Modifier.width(8.dp))
+                                                Text("Settle Up", fontWeight = FontWeight.Bold)
+                                            }
                                         }
                                     }
                                 }
@@ -439,6 +471,10 @@ fun FriendDetailScreen(
                             animatedVisibilityScope = animatedVisibilityScope,
                             onDismiss = { showSettlementSheet = false },
                             onSettleNow = { amount ->
+                                if (isOffline) {
+                                    android.widget.Toast.makeText(context, "Cannot settle while offline", android.widget.Toast.LENGTH_SHORT).show()
+                                    return@SettlementBottomSheet
+                                }
                                 onSettlementClick(
                                     friendship.id,
                                     friend.id,

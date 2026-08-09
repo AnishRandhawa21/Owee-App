@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -54,6 +55,9 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 
+import com.anish.owee.utils.ConnectivityObserver
+import com.anish.owee.utils.NetworkConnectivityObserver
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun GroupDetailScreen(
@@ -75,6 +79,11 @@ fun GroupDetailScreen(
     var selectedBalanceUserId by remember { mutableStateOf<String?>(null) }
     var expenseMenuAnchor by remember { mutableStateOf<Expense?>(null) }
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val connectivityObserver = remember { NetworkConnectivityObserver(context) }
+    val status by connectivityObserver.observe().collectAsState(initial = ConnectivityObserver.Status.Available)
+    val isOffline = status != ConnectivityObserver.Status.Available
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -346,7 +355,13 @@ fun GroupDetailScreen(
 
             // FAB - Matching Groups Screen
             FloatingActionButton(
-                onClick = { onAddExpenseClick(groupId) },
+                onClick = { 
+                    if (isOffline) {
+                        android.widget.Toast.makeText(context, "Cannot add expense while offline", android.widget.Toast.LENGTH_SHORT).show()
+                        return@FloatingActionButton
+                    }
+                    onAddExpenseClick(groupId) 
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 24.dp, bottom = 110.dp) // Adjusted for floating nav
@@ -355,12 +370,20 @@ fun GroupDetailScreen(
                         rememberSharedContentState(key = "fab_add_expense"),
                         animatedVisibilityScope = animatedVisibilityScope
                     ),
-                containerColor = MaterialTheme.colorScheme.primary,
+                containerColor = if (isOffline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = MaterialTheme.shapes.medium,
                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 6.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Expense", modifier = Modifier.size(32.dp))
+                if (isOffline) {
+                    Text(
+                        text = "Offline",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    Icon(Icons.Default.Add, contentDescription = "Add Expense", modifier = Modifier.size(32.dp))
+                }
             }
         }
     }
@@ -393,7 +416,10 @@ fun GroupDetailScreen(
                 animatedVisibilityScope = animatedVisibilityScope,
                 onDismiss = { selectedBalanceUserId = null },
                 onSettleClick = { memberId, amount ->
-
+                    if (isOffline) {
+                        android.widget.Toast.makeText(context, "Cannot settle while offline", android.widget.Toast.LENGTH_SHORT).show()
+                        return@MemberBalanceBottomSheet
+                    }
                     onSettlementClick(
                         groupId,
                         memberId,

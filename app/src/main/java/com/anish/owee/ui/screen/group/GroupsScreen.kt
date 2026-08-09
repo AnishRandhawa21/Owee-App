@@ -38,6 +38,13 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
+import com.anish.owee.utils.ConnectivityObserver
+import com.anish.owee.utils.NetworkConnectivityObserver
+import androidx.compose.ui.platform.LocalContext
+
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.ComponentActivity
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun GroupsScreen(
@@ -45,13 +52,23 @@ fun GroupsScreen(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     onCreateGroupClick: () -> Unit = {},
-    onGroupClick: (String) -> Unit = {}
+    onGroupClick: (String) -> Unit = {},
+    sessionViewModel: com.anish.owee.viewmodel.SessionViewModel = viewModel(
+        viewModelStoreOwner = LocalContext.current as ComponentActivity
+    )
 ) {
     val viewModel: GroupViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isOfflineLoading by sessionViewModel.isOfflineLoading.collectAsState()
+    
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+
+    val connectivityObserver = remember { NetworkConnectivityObserver(context) }
+    val status by connectivityObserver.observe().collectAsState(initial = ConnectivityObserver.Status.Available)
+    val isOffline = status != ConnectivityObserver.Status.Available
 
     var groupToDelete by remember { mutableStateOf<GroupWithMetadata?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -180,21 +197,26 @@ fun GroupsScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         PullToRefreshBox(
-            isRefreshing = uiState.isLoading,
-            onRefresh = { viewModel.loadGroups() },
+            isRefreshing = uiState.isLoading || isOfflineLoading,
+            onRefresh = { 
+                if (isOffline) {
+                    sessionViewModel.triggerOfflineRefresh()
+                }
+                viewModel.loadGroups() 
+            },
             modifier = Modifier.fillMaxSize(),
             indicator = { }
         ) {
             // Animated Status Bar Loading
             AnimatedVisibility(
-                visible = uiState.isLoading,
+                visible = uiState.isLoading || isOfflineLoading,
                 enter = fadeIn(tween(400)) + expandVertically(tween(400)),
                 exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
                 modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
             ) {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().height(3.dp),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (isOffline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     trackColor = Color.Transparent
                 )
             }
@@ -368,23 +390,69 @@ fun GroupsScreen(
         }
 
         with(sharedTransitionScope) {
+            val fabWidth by animateDpAsState(
+                targetValue = if (isOffline) 120.dp else 64.dp,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+                label = "fabWidth"
+            )
+            val fabColor by animateColorAsState(
+                targetValue = if (isOffline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                animationSpec = tween(500),
+                label = "fabColor"
+            )
+            val fabContentColor by animateColorAsState(
+                targetValue = if (isOffline) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary,
+                animationSpec = tween(500),
+                label = "fabContentColor"
+            )
+
             FloatingActionButton(
-                onClick = onCreateGroupClick,
+                onClick = {
+                    if (isOffline) {
+                        android.widget.Toast.makeText(context, "Cannot create group while offline", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        onCreateGroupClick()
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 24.dp, bottom = 110.dp)
-                    .size(64.dp)
+                    .width(fabWidth)
+                    .height(64.dp)
                     .sharedElement(
                         rememberSharedContentState(key = "fab_create_group"),
                         animatedVisibilityScope = animatedVisibilityScope,
                         zIndexInOverlay = 2f
                     ),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+                containerColor = fabColor,
+                contentColor = fabContentColor,
                 shape = MaterialTheme.shapes.medium,
                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 6.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(32.dp))
+                AnimatedContent(
+                    targetState = isOffline,
+                    transitionSpec = {
+                        (fadeIn(tween(300)) + scaleIn(initialScale = 0.8f, animationSpec = tween(300)))
+                            .togetherWith(fadeOut(tween(300)) + scaleOut(targetScale = 0.8f, animationSpec = tween(300)))
+                    },
+                    label = "fabContent"
+                ) { offline ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (offline) Icons.Rounded.CloudOff else Icons.Default.Add,
+                            contentDescription = if (offline) "Offline" else "Add",
+                            modifier = Modifier.size(if (offline) 24.dp else 32.dp)
+                        )
+                        if (offline) {
+                            Spacer(Modifier.width(8.dp))
+                            Text("Offline", fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
+                    }
+                }
             }
         }
     }

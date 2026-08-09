@@ -106,39 +106,49 @@ class FriendshipViewModel(application: Application) : AndroidViewModel(applicati
                 val currentUserId = friendshipRepository.getCurrentUserId() ?: ""
                 val balances = mutableMapOf<String, Double>()
 
-                friends.forEach { friendship ->
-                    val friendId = if (friendship.senderId == currentUserId) friendship.receiverId else friendship.senderId
-                    val requests = friendRequestRepository.getRequestsForFriend(friendId)
-                    
-                    // 1. Fetch Friend-specific allocations
-                    val allocations = settlementRepository.getAllocations("FRIEND", friendship.id)
-                    
-                    balances[friendship.id] = FriendBalanceCalculator.calculate(
-                        currentUserId = currentUserId,
-                        requests = requests,
-                        allocations = allocations
-                    )
+                if (friends.isNotEmpty()) {
+                    friends.forEach { friendship ->
+                        val friendId = if (friendship.senderId == currentUserId) friendship.receiverId else friendship.senderId
+                        val requests = friendRequestRepository.getRequestsForFriend(friendId)
+
+                        // 1. Fetch Friend-specific allocations
+                        val allocations = settlementRepository.getAllocations("FRIEND", friendship.id)
+                        
+                        balances[friendship.id] = FriendBalanceCalculator.calculate(
+                            currentUserId = currentUserId,
+                            requests = requests,
+                            allocations = allocations
+                        )
+                    }
+
+                    _uiState.value =
+                        _uiState.value.copy(
+                            isLoading = false,
+                            incomingRequests = incoming,
+                            outgoingRequests = outgoing,
+                            friends = friends,
+                            friendBalances = balances,
+                            currentUserId = currentUserId
+                        )
+
+                    // Save to cache
+                    preferenceManager.saveFriends(friends, balances)
+                } else {
+                     _uiState.value =
+                        _uiState.value.copy(
+                            isLoading = false,
+                            incomingRequests = incoming,
+                            outgoingRequests = outgoing,
+                            currentUserId = currentUserId
+                        )
                 }
 
-                _uiState.value =
-                    _uiState.value.copy(
-                        isLoading = false,
-                        incomingRequests = incoming,
-                        outgoingRequests = outgoing,
-                        friends = friends,
-                        friendBalances = balances,
-                        currentUserId = currentUserId
-                    )
-
-                // Save to cache
-                preferenceManager.saveFriends(friends, balances)
-
             } catch (e: Exception) {
-
+                // If we have cached data, don't show the technical error
                 _uiState.value =
                     _uiState.value.copy(
                         isLoading = false,
-                        error = e.message
+                        error = if (_uiState.value.friends.isEmpty()) "Unable to connect to server. Please check your internet connection." else null
                     )
             }
         }

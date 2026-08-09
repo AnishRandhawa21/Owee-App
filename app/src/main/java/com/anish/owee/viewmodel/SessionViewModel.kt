@@ -23,6 +23,42 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private val _sessionState = MutableStateFlow<SessionState>(SessionState.Loading)
     val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
 
+    private val _isOfflineLoading = MutableStateFlow(false)
+    val isOfflineLoading: StateFlow<Boolean> = _isOfflineLoading.asStateFlow()
+
+    private val _showOfflineBanner = MutableStateFlow(false)
+    val showOfflineBanner: StateFlow<Boolean> = _showOfflineBanner.asStateFlow()
+
+    private val _showOnlineBanner = MutableStateFlow(false)
+    val showOnlineBanner: StateFlow<Boolean> = _showOnlineBanner.asStateFlow()
+
+    fun triggerOfflineBanner() {
+        viewModelScope.launch {
+            _showOnlineBanner.value = false // Hide online if offline triggered
+            _showOfflineBanner.value = true
+            kotlinx.coroutines.delay(3000)
+            _showOfflineBanner.value = false
+        }
+    }
+
+    fun triggerOnlineBanner() {
+        viewModelScope.launch {
+            _showOfflineBanner.value = false // Hide offline if online triggered
+            _showOnlineBanner.value = true
+            kotlinx.coroutines.delay(3000)
+            _showOnlineBanner.value = false
+        }
+    }
+
+    fun triggerOfflineRefresh() {
+        viewModelScope.launch {
+            _isOfflineLoading.value = true
+            kotlinx.coroutines.delay(1500)
+            _isOfflineLoading.value = false
+            triggerOfflineBanner()
+        }
+    }
+
     init {
         Log.d(TAG, "SessionViewModel initialized, checking session...")
         checkSession()

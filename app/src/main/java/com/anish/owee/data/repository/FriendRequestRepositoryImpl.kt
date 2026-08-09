@@ -23,6 +23,7 @@ class FriendRequestRepositoryImpl : FriendRequestRepository {
     private val auth = client.auth
 
     private val postgrest = client.postgrest
+    private val preferenceManager = com.anish.owee.data.local.PreferenceManager.getInstance(com.anish.owee.OweeApp.instance)
 
     override suspend fun createRequest(
         friendId: String,
@@ -59,10 +60,10 @@ class FriendRequestRepositoryImpl : FriendRequestRepository {
     ): List<FriendRequest> {
 
         val currentUserId =
-            auth.currentUserOrNull()?.id
+            getCurrentUserId()
                 ?: return emptyList()
 
-        return try {
+        try {
 
             android.util.Log.d(
                 "OWEE_REQUESTS",
@@ -88,7 +89,7 @@ class FriendRequestRepositoryImpl : FriendRequestRepository {
                 "Filtered requests = ${requests.size}"
             )
 
-            requests
+            return requests
 
         } catch (e: Exception) {
 
@@ -98,12 +99,12 @@ class FriendRequestRepositoryImpl : FriendRequestRepository {
                 e
             )
 
-            emptyList()
+            throw e
         }
     }
 
     override fun getCurrentUserId(): String? {
-        return auth.currentUserOrNull()?.id
+        return auth.currentUserOrNull()?.id ?: preferenceManager.getUser()?.id
     }
 
     override suspend fun markRequestPaid(
@@ -160,7 +161,7 @@ class FriendRequestRepositoryImpl : FriendRequestRepository {
 
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
-            
+
             android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to friend_requests")
 
             postgresFlow.collect {

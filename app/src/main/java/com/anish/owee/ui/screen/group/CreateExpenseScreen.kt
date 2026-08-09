@@ -41,6 +41,12 @@ import com.anish.owee.ui.theme.*
 import com.anish.owee.viewmodel.CreateExpenseViewModel
 import kotlinx.coroutines.launch
 
+import com.anish.owee.utils.ConnectivityObserver
+import com.anish.owee.utils.NetworkConnectivityObserver
+
+import androidx.compose.material.icons.rounded.Calculate
+import com.anish.owee.ui.components.CalculatorSheet
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun CreateExpenseScreen(
@@ -56,6 +62,12 @@ fun CreateExpenseScreen(
     val scope = rememberCoroutineScope()
     val shakeOffset = remember { Animatable(0f) }
     val context = androidx.compose.ui.platform.LocalContext.current
+
+    var showCalculator by remember { mutableStateOf(false) }
+    
+    val connectivityObserver = remember { NetworkConnectivityObserver(context) }
+    val status by connectivityObserver.observe().collectAsState(initial = ConnectivityObserver.Status.Available)
+    val isOffline = status != ConnectivityObserver.Status.Available
 
     LaunchedEffect(groupId) {
         viewModel.loadMembers(groupId)
@@ -122,7 +134,29 @@ fun CreateExpenseScreen(
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 22.sp
                             ),
-                            color = MaterialTheme.colorScheme.onBackground
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        IconButton(onClick = { showCalculator = true }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Calculate,
+                                contentDescription = "Calculator",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                if (showCalculator) {
+                    item {
+                        CalculatorSheet(
+                            initialValue = uiState.amount,
+                            onDismiss = { showCalculator = false },
+                            onConfirm = {
+                                viewModel.updateAmount(it)
+                                showCalculator = false
+                            }
                         )
                     }
                 }
@@ -350,6 +384,10 @@ fun CreateExpenseScreen(
             ) {
                 Button(
                     onClick = { 
+                        if (isOffline) {
+                            android.widget.Toast.makeText(context, "Cannot create expense while offline", android.widget.Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         if (uiState.title.isBlank()) {
                             triedToSubmit = true
                             scope.launch {
@@ -377,8 +415,8 @@ fun CreateExpenseScreen(
                     enabled = hasAmount && uiState.selectedParticipantIds.isNotEmpty() && !uiState.isLoading,
                     interactionSource = interactionSource,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        containerColor = if (isOffline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = if (isOffline) MaterialTheme.colorScheme.error.copy(alpha = 0.3f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                     ),
                     elevation = ButtonDefaults.buttonElevation(
                         defaultElevation = 8.dp,
@@ -393,7 +431,7 @@ fun CreateExpenseScreen(
                         )
                     } else {
                         Text(
-                            text = if (hasAmount) "Create Expense" else "Enter Details",
+                            text = if (isOffline) "Offline" else if (hasAmount) "Create Expense" else "Enter Details",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                     }

@@ -18,6 +18,16 @@ class PreferenceManager(context: Context) {
         encodeDefaults = true
     }
 
+    companion object {
+        private var instance: PreferenceManager? = null
+
+        fun getInstance(context: Context): PreferenceManager {
+            return instance ?: synchronized(this) {
+                instance ?: PreferenceManager(context.applicationContext).also { instance = it }
+            }
+        }
+    }
+
     fun saveHomeBalance(total: Double, groups: Double, friends: Double, userBalances: List<UserTotalBalance>) {
         prefs.edit().apply {
             putFloat("total_balance", total.toFloat())
@@ -139,6 +149,19 @@ class PreferenceManager(context: Context) {
 
     fun getThemeMode(): String {
         return prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+    }
+
+    fun saveUser(user: com.anish.owee.data.model.User) {
+        prefs.edit().putString("cached_user", json.encodeToString(user)).apply()
+    }
+
+    fun getUser(): com.anish.owee.data.model.User? {
+        val userJson = prefs.getString("cached_user", null) ?: return null
+        return try {
+            json.decodeFromString<com.anish.owee.data.model.User>(userJson)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun savePendingPayment(payment: PendingPayment) {

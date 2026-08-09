@@ -20,6 +20,7 @@ class AuthRepositoryImpl : AuthRepository {
     private val auth = client.auth
     private val postgrest = client.postgrest
     private val TAG = "OWEE_AUTH"
+    private val preferenceManager = com.anish.owee.data.local.PreferenceManager.getInstance(com.anish.owee.OweeApp.instance)
 
     override suspend fun signInWithGoogle(idToken: String, nonce: String?): Result<Unit> = withContext(Dispatchers.IO) {
         val threadName = Thread.currentThread().name
@@ -55,15 +56,23 @@ class AuthRepositoryImpl : AuthRepository {
     }
 
     override suspend fun getCurrentUser(): User? = withContext(Dispatchers.IO) {
-        val userId = auth.currentUserOrNull()?.id ?: return@withContext null
+        val userId = auth.currentUserOrNull()?.id
+        if (userId == null) {
+            return@withContext preferenceManager.getUser()
+        }
+        
         try {
-            postgrest["users"].select {
+            val user = postgrest["users"].select {
                 filter {
                     eq("id", userId)
                 }
             }.decodeSingleOrNull<User>()
+            if (user != null) {
+                preferenceManager.saveUser(user)
+            }
+            user
         } catch (_: Exception) {
-            null
+            preferenceManager.getUser()
         }
     }
 
@@ -117,6 +126,8 @@ class AuthRepositoryImpl : AuthRepository {
         if (!hasActiveSession()) return@withContext false
         val user = getCurrentUser()
         Log.d(TAG, "Fetched user profile: $user")
+        
+        // If we are offline and have a cached user, assume no setup needed if username exists
         val needsSetup = user == null || user.username.isBlank()
         Log.d(TAG, "Needs username setup: $needsSetup")
         needsSetup

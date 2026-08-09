@@ -273,7 +273,7 @@ class ExpenseRepositoryImpl : ExpenseRepository {
 
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
-            
+
             android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to expense tables")
 
             merge(expenseFlow, participantFlow).collect {

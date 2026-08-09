@@ -54,6 +54,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
+import com.anish.owee.utils.ConnectivityObserver
+import com.anish.owee.utils.NetworkConnectivityObserver
+import androidx.compose.ui.platform.LocalContext
+
+import androidx.activity.ComponentActivity
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun FriendsScreen(
@@ -61,12 +67,22 @@ fun FriendsScreen(
     snackbarHostState: SnackbarHostState,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
-    friendshipViewModel: FriendshipViewModel = viewModel()
+    friendshipViewModel: FriendshipViewModel = viewModel(),
+    sessionViewModel: com.anish.owee.viewmodel.SessionViewModel = viewModel(
+        viewModelStoreOwner = LocalContext.current as ComponentActivity
+    )
 ) {
     val uiState by friendshipViewModel.uiState.collectAsStateWithLifecycle()
+    val isOfflineLoading by sessionViewModel.isOfflineLoading.collectAsState()
+    
     val listState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+
+    val connectivityObserver = remember { NetworkConnectivityObserver(context) }
+    val status by connectivityObserver.observe().collectAsState(initial = ConnectivityObserver.Status.Available)
+    val isOffline = status != ConnectivityObserver.Status.Available
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -200,21 +216,26 @@ fun FriendsScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         PullToRefreshBox(
-            isRefreshing = uiState.isLoading,
-            onRefresh = { friendshipViewModel.loadData() },
+            isRefreshing = uiState.isLoading || isOfflineLoading,
+            onRefresh = { 
+                if (isOffline) {
+                    sessionViewModel.triggerOfflineRefresh()
+                }
+                friendshipViewModel.loadData() 
+            },
             modifier = Modifier.fillMaxSize(),
             indicator = { } // Remove default spinner
         ) {
             // --- Status Bar Loading ---
             AnimatedVisibility(
-                visible = uiState.isLoading || uiState.isSearching,
+                visible = uiState.isLoading || uiState.isSearching || isOfflineLoading,
                 enter = fadeIn(tween(400)) + expandVertically(tween(400)),
                 exit = fadeOut(tween(400)) + shrinkVertically(tween(400)),
                 modifier = Modifier.align(Alignment.TopCenter).zIndex(1f)
             ) {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().height(3.dp),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (isOffline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     trackColor = Color.Transparent
                 )
             }

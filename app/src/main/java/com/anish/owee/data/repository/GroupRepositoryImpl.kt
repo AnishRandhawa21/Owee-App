@@ -29,6 +29,7 @@ class GroupRepositoryImpl : GroupRepository {
     private val client = SupabaseProvider.client
     private val auth = client.auth
     private val postgrest = client.postgrest
+    private val preferenceManager = com.anish.owee.data.local.PreferenceManager.getInstance(com.anish.owee.OweeApp.instance)
 
     override suspend fun createGroup(
         name: String,
@@ -64,7 +65,7 @@ class GroupRepositoryImpl : GroupRepository {
             val membersToInsert = mutableListOf(
                 mapOf("group_id" to group.id, "user_id" to currentUserId)
             )
-            
+
             memberIds.forEach { memberId ->
                 membersToInsert.add(mapOf("group_id" to group.id, "user_id" to memberId))
             }
@@ -93,13 +94,13 @@ class GroupRepositoryImpl : GroupRepository {
 
     override suspend fun getGroupsWithMetadata(): List<GroupWithMetadata> =
         withContext(Dispatchers.IO) {
-            val currentUserId = auth.currentUserOrNull()?.id ?: return@withContext emptyList()
+            val currentUserId = getCurrentUserId() ?: return@withContext emptyList()
             try {
                 // 1. Get all group memberships for the current user
                 val memberships = postgrest["group_members"]
                     .select { filter { eq("user_id", currentUserId) } }
                     .decodeList<GroupMember>()
-                
+
                 val groupIds = memberships.map { it.groupId }
                 if (groupIds.isEmpty()) return@withContext emptyList()
 
@@ -118,9 +119,9 @@ class GroupRepositoryImpl : GroupRepository {
                         filter { isIn("group_id", groupIds) }
                     }
                     .decodeList<GroupMemberUser>()
-                
+
                 val membersByGroup = allGroupDetails.groupBy { it.groupId }
-                
+
                 // Fetch creators separately to be safe, but still in bulk
                 val creatorIds = groups.map { it.createdBy }.distinct()
                 val creators = postgrest["users"]
@@ -137,7 +138,7 @@ class GroupRepositoryImpl : GroupRepository {
                 }
             } catch (e: Exception) {
                 android.util.Log.e("OWEE_GROUP", "getGroupsWithMetadata failed", e)
-                emptyList()
+                throw e
             }
         }
 
@@ -173,7 +174,7 @@ class GroupRepositoryImpl : GroupRepository {
     }
 
     override fun getCurrentUserId(): String? {
-        return auth.currentUserOrNull()?.id
+        return auth.currentUserOrNull()?.id ?: preferenceManager.getUser()?.id
     }
 
     override suspend fun getGroupMembers(
@@ -227,7 +228,7 @@ class GroupRepositoryImpl : GroupRepository {
 
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
-            
+
             android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to group tables")
 
             merge(membersFlow, groupsFlow).collect {

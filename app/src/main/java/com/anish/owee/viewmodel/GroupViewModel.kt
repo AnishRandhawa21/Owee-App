@@ -71,54 +71,63 @@ class GroupViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val currentUserId = groupRepository.getCurrentUserId() ?: return@launch
                 val rawNetworkGroups = groupRepository.getGroupsWithMetadata()
-                
+
                 // Filter out any groups that we just deleted optimistically
                 val networkGroups = rawNetworkGroups.filter { !deletedGroupIds.contains(it.group.id) }
 
-                // UPDATE UI IMMEDIATELY WITH NETWORK DATA
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    groups = networkGroups.map { net ->
-                        // Preserve the settled status from state if it already exists to avoid badge flicker
-                        val existing = _uiState.value.groups.find { it.group.id == net.group.id }
-                        net.copy(isSettled = existing?.isSettled ?: true)
-                    },
-                    currentUserId = currentUserId
-                )
-
-                // BACKGROUND: Update settlement badges
-                val updatedGroups = networkGroups.map { metadata ->
-                    val groupId = metadata.group.id
-                    val expenses = expenseRepository.getGroupExpenses(groupId)
-                    
-                    val isSettled = if (expenses.isEmpty()) {
-                        true
-                    } else {
-                        val allocations = settlementRepository.getAllocations("GROUP", groupId)
-                        val allParticipants = expenseRepository.getAllExpenseParticipants(expenses.map { it.id })
-                        val participantsByExpense = allParticipants.groupBy { it.expenseId }
-
-                        val balances = GroupBalanceCalculator.calculateBalances(
-                            currentUserId = currentUserId,
-                            expenses = expenses,
-                            participantsByExpense = participantsByExpense,
-                            allocations = allocations
-                        )
-                        balances.isEmpty()
-                    }
-                    metadata.copy(isSettled = isSettled)
+                if (networkGroups.isNotEmpty()) {
+                    // UPDATE UI IMMEDIATELY WITH NETWORK DATA
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        groups = networkGroups.map { net ->
+                            // Preserve the settled status from state if it already exists to avoid badge flicker
+                            val existing = _uiState.value.groups.find { it.group.id == net.group.id }
+                            net.copy(isSettled = existing?.isSettled ?: true)
+                        },
+                        currentUserId = currentUserId
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, currentUserId = currentUserId)
                 }
 
-                // Final safety check: ensure we don't bring back deleted groups
-                val finalGroups = updatedGroups.filter { !deletedGroupIds.contains(it.group.id) }
+                // BACKGROUND: Update settlement badges
+                try {
+                    val updatedGroups = networkGroups.map { metadata ->
+                        val groupId = metadata.group.id
+                        val expenses = expenseRepository.getGroupExpenses(groupId)
 
-                _uiState.value = _uiState.value.copy(groups = finalGroups)
-                preferenceManager.saveGroups(finalGroups)
+                        val isSettled = if (expenses.isEmpty()) {
+                            true
+                        } else {
+                            val allocations = settlementRepository.getAllocations("GROUP", groupId)
+                            val allParticipants = expenseRepository.getAllExpenseParticipants(expenses.map { it.id })
+                            val participantsByExpense = allParticipants.groupBy { it.expenseId }
+
+                            val balances = GroupBalanceCalculator.calculateBalances(
+                                currentUserId = currentUserId,
+                                expenses = expenses,
+                                participantsByExpense = participantsByExpense,
+                                allocations = allocations
+                            )
+                            balances.isEmpty()
+                        }
+                        metadata.copy(isSettled = isSettled)
+                    }
+
+                    // Final safety check: ensure we don't bring back deleted groups
+                    val finalGroups = updatedGroups.filter { !deletedGroupIds.contains(it.group.id) }
+
+                    _uiState.value = _uiState.value.copy(groups = finalGroups)
+                    preferenceManager.saveGroups(finalGroups)
+                } catch (_: Exception) {
+                    // Fail silently for background updates
+                }
 
             } catch (e: Exception) {
+                // If we have cached data, don't show the technical error
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = if (_uiState.value.groups.isEmpty()) e.message else null
+                    error = if (_uiState.value.groups.isEmpty()) "Unable to connect to server. Please check your internet connection." else null
                 )
             }
         }

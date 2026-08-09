@@ -36,11 +36,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     init {
         loadCachedData()
         // If we have cached data, the first load should be silent to avoid skeleton flicker
-        val hasData = _uiState.value.userBalances.isNotEmpty() || 
+        val hasData = _uiState.value.userBalances.isNotEmpty() ||
                      _uiState.value.totalBalance != 0.0 ||
                      _uiState.value.groupBalance != 0.0 ||
                      _uiState.value.friendBalance != 0.0
-        
+
         loadHomeData(isSilent = hasData)
         observeChanges()
     }
@@ -231,7 +231,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message
+                    error = if (_uiState.value.userBalances.isEmpty()) "Unable to connect to server. Please check your internet connection." else null
                 )
             }
         }

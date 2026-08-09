@@ -70,7 +70,7 @@ class GroupDetailViewModel(application: Application) : AndroidViewModel(applicat
     fun loadGroupData(groupId: String) {
 
         viewModelScope.launch {
-            
+
             val currentUserId = groupRepository.getCurrentUserId()
             if (currentUserId == null) {
                 // If we have data, just turn off loading. If not, show error.

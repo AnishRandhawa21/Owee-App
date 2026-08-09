@@ -25,6 +25,7 @@ class FriendshipRepositoryImpl : FriendshipRepository {
     private val client = SupabaseProvider.client
     private val auth = client.auth
     private val postgrest = client.postgrest
+    private val preferenceManager = com.anish.owee.data.local.PreferenceManager.getInstance(com.anish.owee.OweeApp.instance)
 
     private val selectColumns = Columns.raw("*, sender:sender_id(*), receiver:receiver_id(*)")
 
@@ -236,7 +237,7 @@ class FriendshipRepositoryImpl : FriendshipRepository {
         withContext(Dispatchers.IO) {
 
             val currentUserId =
-                auth.currentUserOrNull()?.id
+                getCurrentUserId()
                     ?: return@withContext emptyList()
 
             try {
@@ -253,7 +254,7 @@ class FriendshipRepositoryImpl : FriendshipRepository {
                     }
                     .decodeList<Friendship>()
             } catch (e: Exception) {
-                emptyList()
+                throw e
             }
         }
 
@@ -261,7 +262,7 @@ class FriendshipRepositoryImpl : FriendshipRepository {
         withContext(Dispatchers.IO) {
 
             val currentUserId =
-                auth.currentUserOrNull()?.id
+                getCurrentUserId()
                     ?: return@withContext emptyList()
 
             try {
@@ -278,7 +279,7 @@ class FriendshipRepositoryImpl : FriendshipRepository {
                     }
                     .decodeList<Friendship>()
             } catch (e: Exception) {
-                emptyList()
+                throw e
             }
         }
 
@@ -309,7 +310,7 @@ class FriendshipRepositoryImpl : FriendshipRepository {
     }
 
     override fun getCurrentUserId(): String? {
-        return auth.currentUserOrNull()?.id
+        return auth.currentUserOrNull()?.id ?: preferenceManager.getUser()?.id
     }
 
     override fun friendshipChanges(): Flow<Unit> = flow {
@@ -325,7 +326,7 @@ class FriendshipRepositoryImpl : FriendshipRepository {
 
             channel.subscribe()
             channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
-            
+
             android.util.Log.d("OWEE_REALTIME", "Subscribed successfully to friendships")
 
             postgresFlow.collect {
